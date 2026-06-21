@@ -1,3 +1,5 @@
+[Donate via PayPal](https://paypal.me/gudarzGudarzian)
+
 # Federation Automation
 
 Federation Automation is a Windows PowerShell tool for staging BIM model files, adding selected metadata to IFC files, grouping and federating models into Navisworks NWD outputs, and optionally publishing a final model to Revizto.
