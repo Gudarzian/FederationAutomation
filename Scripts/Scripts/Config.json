@@ -1,0 +1,84 @@
+{
+  "schemaVersion": 1,
+  "settings": {
+    "LogFolder": "Logs",
+    "SourceFolder": "SourceFiles",
+    "AttributesFile": "PWAttributes.xlsx",
+    "RunDownload": "No",
+    "SourceAcquisitionMode": "Auto",
+    "PWUser": "",
+    "PWPass": "",
+    "RunProcess": "No",
+    "ProcessedFolder": "ProcessedIFC",
+    "RunFederation": "No",
+    "FederationGroupingMethod": "Naming Convention and Lookups",
+    "IncludeUnmatchedFilesInFederatedModel": "No",
+    "FederationInputFolder": "SourceFiles",
+    "FederationOutputFolder": "Output",
+    "FederatedFileName": "Project Federated.nwd",
+    "NavisworksVersion": "",
+    "NavisworksConfigXML": "NavisworksOptions.xml",
+    "NavisworksViewsImportXML": "",
+    "NavisworksVisible": "No",
+    "NWDNamingMethod": "Full",
+    "ReviztoPublish": "No",
+    "ReviztoPublishCode": "",
+    "ReviztoMaxAgeMinutes": "60"
+  },
+  "download": [
+    {
+      "Run": "No",
+      "ReadFolder": "C:\\Path\\To\\SourceModels",
+      "FileFilter": "*.ifc",
+      "Exclude": "delete,withdrawn",
+      "SkipIfSame": "Yes",
+      "CheckDateToo": "Yes",
+      "MinState": ""
+    }
+  ],
+  "pwAttributesList": [
+    {
+      "AttributeName": "FileName",
+      "OutputName": "FileName",
+      "ExportToXLSX": "Yes",
+      "InjectToIFC": "No"
+    }
+  ],
+  "federation": [
+    {
+      "FieldNames": "Originator",
+      "Filename-Part": "1",
+      "GroupOrder": "1",
+      "Description": "Originator",
+      "InjectToIFC": "No"
+    },
+    {
+      "FieldNames": "FileExtension",
+      "Filename-Part": "FileExtension",
+      "GroupOrder": "0",
+      "Description": "File extension",
+      "InjectToIFC": "No"
+    }
+  ],
+  "wildcardSelection": [
+    {
+      "Inclusions": "Example*Discipline*.ifc",
+      "Exclusions": "*Superseded*.ifc",
+      "ExportFileName": "Example Discipline.nwd",
+      "ReadFromOutputFolder": "No"
+    },
+    {
+      "Inclusions": "Example Discipline.nwd",
+      "Exclusions": "",
+      "ExportFileName": "Example Project Federated.nwd",
+      "ReadFromOutputFolder": "Yes"
+    }
+  ],
+  "lookups": [
+    {
+      "Filename-Part": "1",
+      "Code": "ABC",
+      "Description": "Example originator"
+    }
+  ]
+}
