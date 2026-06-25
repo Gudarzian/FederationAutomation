@@ -347,6 +347,7 @@ Groups IFCs and federates them into NWD outputs.
         [string]$ConfigFile = "Config.xlsx",
         [array]$Settings = @(),
         [Parameter(Mandatory = $true)][array]$FederationRows,
+        [array]$WildcardSelectionRows = @(),
         [array]$LookupRows,
         [string]$LogsFolder,
         [switch]$UseFederationInputFolder
@@ -625,6 +626,61 @@ Groups IFCs and federates them into NWD outputs.
     Write-Host "Federated file name: $FederatedFileName"
     Write-Host "NWD naming method: $nwdNamingMethod"
     Write-Host "Include unmatched in final federated model: $(if ($includeUnmatchedFilesInFederatedModel) { 'Yes' } else { 'No' })"
+
+    $groupingMethod = $ConfigSettings | Where-Object { $_.Parameter -eq 'FederationGroupingMethod' } | Select-Object -ExpandProperty Value -First 1
+    $useWildcardSelection = -not [string]::IsNullOrWhiteSpace($groupingMethod) -and $groupingMethod.ToString().Trim().ToLowerInvariant() -eq 'wildcard selection'
+    if ($useWildcardSelection) {
+        $wildcardRows = @($WildcardSelectionRows | Where-Object { $_ })
+        if ($wildcardRows.Count -eq 0) { throw 'Wildcard Selection is active but no wildcard rules were supplied.' }
+        Write-Host 'Federation grouping method: Wildcard Selection' -ForegroundColor Cyan
+        $ruleSummary = @()
+        $createdOutputNames = @{}
+        $lastCreatedModelPath = $null
+        $federatableExtensions = if (Get-Command Get-FederatableModelExtensions -ErrorAction SilentlyContinue) { Get-FederatableModelExtensions } else { @('.ifc', '.dwg', '.dgn', '.rvt') }
+        for ($ruleIndex = 0; $ruleIndex -lt $wildcardRows.Count; $ruleIndex++) {
+            $rule = $wildcardRows[$ruleIndex]
+            $inclusionText = [string](Get-RowValue -Row $rule -Candidates @('Inclusions','Inclusion'))
+            $exclusionText = [string](Get-RowValue -Row $rule -Candidates @('Exclusions','Exclusion'))
+            $inclusions = @($inclusionText -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+            $exclusions = @($exclusionText -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+            $outputName = ([string](Get-RowValue -Row $rule -Candidates @('ExportFileName','Export File Name'))).Trim()
+            $readFromOutput = ([string](Get-RowValue -Row $rule -Candidates @('ReadFromOutputFolder','Read From Output Folder'))).Trim().ToLowerInvariant() -in @('yes','y','true','1')
+            if ($inclusions.Count -eq 0 -or [string]::IsNullOrWhiteSpace($outputName)) {
+                $warning = "Wildcard rule $($ruleIndex + 1) skipped: Inclusions and ExportFileName are required."
+                Write-Warning $warning; Write-Log -Message $warning -Color 'Yellow' -Settings $ConfigSettings -LogsFolderOverride $LogsFolder -BasePath $basePath
+                continue
+            }
+            if ($outputName.EndsWith('.nwd', [StringComparison]::OrdinalIgnoreCase)) { $outputName = $outputName.Substring(0, $outputName.Length - 4) }
+            if ([string]::IsNullOrWhiteSpace($outputName) -or $outputName.IndexOfAny([IO.Path]::GetInvalidFileNameChars()) -ge 0) { throw "Wildcard rule $($ruleIndex + 1) has an invalid ExportFileName." }
+            if ($createdOutputNames.ContainsKey($outputName.ToLowerInvariant())) { throw "Wildcard rules cannot use duplicate ExportFileName values: '$outputName'." }
+            $createdOutputNames[$outputName.ToLowerInvariant()] = $true
+            $sourcePath = if ($readFromOutput) { $OutputPath } else { $InputFolderPath }
+            $targetPath = Join-Path $OutputPath ("$outputName.nwd")
+            $candidates = @(Get-ChildItem -LiteralPath $sourcePath -File -ErrorAction Stop | Where-Object {
+                ($readFromOutput -or $federatableExtensions -contains $_.Extension.ToLowerInvariant()) -and
+                $_.FullName -ne $targetPath
+            })
+            $matches = @($candidates | Where-Object {
+                $name = $_.Name
+                ($inclusions | Where-Object { $name -like $_ }).Count -gt 0 -and
+                ($exclusions | Where-Object { $name -like $_ }).Count -eq 0
+            } | Select-Object -ExpandProperty FullName)
+            if ($matches.Count -eq 0) {
+                $warning = "Wildcard rule $($ruleIndex + 1) '$outputName' matched no files in '$sourcePath'; skipped."
+                Write-Warning $warning; Write-Log -Message $warning -Color 'Yellow' -Settings $ConfigSettings -LogsFolderOverride $LogsFolder -BasePath $basePath
+                $ruleSummary += [pscustomobject]@{ Rule=$ruleIndex + 1; ExportFileName="$outputName.nwd"; SourceFolder=$sourcePath; MatchedFiles=@(); Status='Skipped - no matches' }
+                continue
+            }
+            $result = CreateNwd -InputFiles ([pscustomobject]@{ FullName=$outputName; Children=$matches }) -OutputPath $OutputPath -NavisworksVersion $NavisworksVersion -NavisworksOptionsPath $NavisworksOptions -NavisworksOptions $NavisworksOptions -BasePath $basePath
+            if (-not $result.Model -or -not (Test-Path -LiteralPath $result.Model -PathType Leaf)) { throw "Wildcard rule $($ruleIndex + 1) failed to create '$outputName.nwd'." }
+            $lastCreatedModelPath = $result.Model
+            $ruleSummary += [pscustomobject]@{ Rule=$ruleIndex + 1; ExportFileName="$outputName.nwd"; SourceFolder=$sourcePath; MatchedFiles=$matches; Status='Created' }
+        }
+        if (-not $lastCreatedModelPath) { throw 'Wildcard Selection created no NWD outputs.' }
+        [ordered]@{ Timestamp=(Get-Date).ToUniversalTime().ToString('o'); GroupingMethod='Wildcard Selection'; InputFolderPath=$InputFolderPath; OutputFolderPath=$OutputPath; WildcardRules=$ruleSummary; LastCreatedModelPath=$lastCreatedModelPath } | ConvertTo-Json -Depth 10 | Set-Content -Path (Join-Path $OutputPath 'federation-summary.json') -Encoding UTF8
+        if ($TranscriptStarted) { Stop-Transcript | Out-Null; $global:MainTranscriptActive = $false }
+        return
+    }
 
     <#
     Normalizes lookup values by trimming and removing non-breaking spaces.

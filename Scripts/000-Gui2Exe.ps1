@@ -3,7 +3,7 @@
 param([string]$OutputFile)
 
 if ($PSVersionTable.PSEdition -ne 'Desktop') {
-    & (Join-Path $env:WINDIR 'System32\WindowsPowerShell\v1.0\powershell.exe') -NoProfile -ExecutionPolicy Bypass -File $PSCommandPath -OutputFile $OutputFile
+    & (Join-Path $env:WINDIR 'System32\WindowsPowerShell\v1.0\powershell.exe') -NoProfile -File $PSCommandPath -OutputFile $OutputFile
     exit $LASTEXITCODE
 }
 $basePath = Split-Path -Parent $PSCommandPath

@@ -10,15 +10,6 @@ param(
     [string]$ConfigFile
 )
 
-# The PS2EXE host cannot be launched with powershell.exe -ExecutionPolicy Bypass,
-# so set a process-only policy before loading user-installed modules like ImportExcel.
-try {
-    Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force -ErrorAction Stop
-}
-catch {
-    Write-Warning "Unable to set process execution policy to Bypass. Module imports may be blocked: $($_.Exception.Message)"
-}
-
 # Resolve the folder that this script (or its host assembly) lives in.
 $basePath = if ($PSCommandPath) { Split-Path -Parent $PSCommandPath }
 elseif ($null -ne $MyInvocation.MyCommand.Path -and $MyInvocation.MyCommand.Path -ne '') {
@@ -197,6 +188,7 @@ $settingsMissing = -not $settingsCache -or $settingsCache.Count -eq 0
 $downloadRangeCache = @($pipelineConfiguration.Download)
 $pwAttributesListCache = @($pipelineConfiguration.PWAttributesList)
 $federationRangeCache = @($pipelineConfiguration.Federation)
+$wildcardSelectionCache = @($pipelineConfiguration.WildcardSelection)
 $lookupsRangeCache = @($pipelineConfiguration.Lookups)
 
 # Resolve log file path for the main transcript.
@@ -742,6 +734,8 @@ try {
         $finalModelPath = $null
         $preModelTimestamp = $null
         $settings = $settingsCache
+        $groupingMethodValue = Get-SettingValue -Settings $settings -Names @('FederationGroupingMethod')
+        $isWildcardSelection = $groupingMethodValue -and $groupingMethodValue.ToString().Trim().ToLowerInvariant() -eq 'wildcard selection'
         $outputFolderValue = $settings | Where-Object { $_.Parameter -eq "FederationOutputFolder" } | Select-Object -ExpandProperty Value
         if (Get-Command CureFolderPath -ErrorAction SilentlyContinue) {
             $outputFolderValue = CureFolderPath $outputFolderValue
@@ -759,6 +753,24 @@ try {
             }
             else {
                 $preModelTimestamp = (Get-Item $finalModelPath).LastWriteTimeUtc
+            }
+        }
+        if ($isWildcardSelection -and $outputFolderValue) {
+            $wildcardSummaryPath = Join-Path $outputFolderValue 'federation-summary.json'
+            $finalModelPath = $null
+            $preModelTimestamp = $null
+            $finalModelMissing = $true
+            if (Test-Path $wildcardSummaryPath -PathType Leaf) {
+                try {
+                    $wildcardSummary = Get-Content -Path $wildcardSummaryPath -Raw | ConvertFrom-Json
+                    $lastWildcardModel = $wildcardSummary.LastCreatedModelPath
+                    if ($wildcardSummary.GroupingMethod -eq 'Wildcard Selection' -and $lastWildcardModel -and (Test-Path $lastWildcardModel -PathType Leaf)) {
+                        $finalModelPath = $lastWildcardModel
+                        $preModelTimestamp = (Get-Item $finalModelPath).LastWriteTimeUtc
+                        $finalModelMissing = $false
+                    }
+                }
+                catch { Write-Warning "Unable to read wildcard federation summary at '$wildcardSummaryPath'. Error: $_" }
             }
         }
         $includeUnmatchedSettingText = Get-SettingValue -Settings $settings -Names @('IncludeUnmatchedFilesInFederatedModel')
@@ -877,10 +889,23 @@ try {
                 Write-Host ("Federation triggered: {0}" -f ($reasons -join "; ")) -ForegroundColor Yellow
             }
             $stepResult = Invoke-Step -Name "Group/Federate Files" -Action {
-                Invoke-GroupFilesForFedProcess -ConfigFile $ConfigFile -Settings $settingsCache -FederationRows $federationRangeCache -LookupRows $lookupsRangeCache -LogsFolder $LogsFolder -UseFederationInputFolder:$SkipProcess
+                Invoke-GroupFilesForFedProcess -ConfigFile $ConfigFile -Settings $settingsCache -FederationRows $federationRangeCache -WildcardSelectionRows $wildcardSelectionCache -LookupRows $lookupsRangeCache -LogsFolder $LogsFolder -UseFederationInputFolder:$SkipProcess
             }
             if ($stepResult) { $stepResults.Add($stepResult) | Out-Null }
             $federationRan = $true
+        }
+
+        if ($isWildcardSelection -and $federationRan -and $outputFolderValue) {
+            $wildcardSummaryPath = Join-Path $outputFolderValue 'federation-summary.json'
+            if (Test-Path $wildcardSummaryPath -PathType Leaf) {
+                try {
+                    $wildcardSummary = Get-Content -Path $wildcardSummaryPath -Raw | ConvertFrom-Json
+                    if ($wildcardSummary.LastCreatedModelPath -and (Test-Path $wildcardSummary.LastCreatedModelPath -PathType Leaf)) {
+                        $finalModelPath = $wildcardSummary.LastCreatedModelPath
+                    }
+                }
+                catch { Write-Warning "Unable to read wildcard federation summary at '$wildcardSummaryPath'. Error: $_" }
+            }
         }
 
         # Only publish to Revizto when a new federated model is produced.

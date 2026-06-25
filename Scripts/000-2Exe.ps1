@@ -14,7 +14,7 @@ if ($PSVersionTable.PSEdition -ne 'Desktop') {
         throw "Windows PowerShell executable not found at '$desktopPwsh'."
     }
     Write-Host "Relaunching build under Windows PowerShell (Desktop edition)..." -ForegroundColor Yellow
-    $relaunchArgs = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $PSCommandPath)
+    $relaunchArgs = @('-NoProfile', '-File', $PSCommandPath)
     if ($OutputFile) {
         $relaunchArgs += @('-OutputFile', $OutputFile)
     }

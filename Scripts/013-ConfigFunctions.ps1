@@ -45,6 +45,7 @@ function Get-FEDAUTOSettingsCatalog {
         @('IFC processing','RunProcess','No','Yes runs IFC processing when needed; No skips it; Force reprocesses all applicable IFC files.'),
         @('IFC processing','ProcessedFolder','ProcessedIFC','Folder for processed IFC files and process summaries.'),
         @('Federation & Navisworks','RunFederation','Yes','Yes uses change-based federation; No disables it; Force always rebuilds the federation.'),
+        @('Federation & Navisworks','FederationGroupingMethod','Naming Convention and Lookups','Choose Naming Convention and Lookups or Wildcard Selection.'),
         @('Federation & Navisworks','IncludeUnmatchedFilesInFederatedModel','No','Adds models that do not match federation naming rules into the final federated NWD.'),
         @('Federation & Navisworks','FederationInputFolder','','Leave blank to use ProcessedFolder when processing runs, otherwise SourceFolder.'),
         @('Federation & Navisworks','FederationOutputFolder','Output','Folder where grouped NWD files and the final federated model are created.'),
@@ -112,6 +113,7 @@ function Get-PipelineConfiguration {
             Download         = @(ConvertTo-PipelineRows $raw.download)
             PWAttributesList = @(ConvertTo-PipelineRows $raw.pwAttributesList)
             Federation       = @(ConvertTo-PipelineRows $raw.federation)
+            WildcardSelection = @(ConvertTo-PipelineRows $raw.wildcardSelection)
             Lookups          = @(ConvertTo-PipelineRows $raw.lookups)
         }
     }
@@ -122,12 +124,18 @@ function Get-PipelineConfiguration {
     if (-not (Get-Command Get-ExcelDataSafe -ErrorAction SilentlyContinue)) {
         throw 'Excel configuration support is unavailable because Get-ExcelDataSafe was not loaded.'
     }
+    # WildcardSelection was introduced after the legacy Excel format.  Its
+    # absence in existing workbooks is valid and simply means no rules exist.
+    $wildcardSelectionRows = @()
+    try { $wildcardSelectionRows = @(Get-ExcelDataSafe -Path $ConfigPath -NamedRange 'WildcardSelection') }
+    catch { $wildcardSelectionRows = @() }
     return [pscustomobject]@{
         Format           = 'Excel'
         Settings         = @(Get-SettingsSafe -ConfigPath $ConfigPath -BasePath $BasePath)
         Download         = @(Get-ExcelDataSafe -Path $ConfigPath -NamedRange 'Download')
         PWAttributesList = @(Get-ExcelDataSafe -Path $ConfigPath -NamedRange 'PWAttributesList')
         Federation       = @(Get-ExcelDataSafe -Path $ConfigPath -NamedRange 'Federation')
+        WildcardSelection = $wildcardSelectionRows
         Lookups          = @(Get-ExcelDataSafe -Path $ConfigPath -NamedRange 'Lookups')
     }
 }
@@ -140,6 +148,7 @@ function Save-PipelineJsonConfiguration {
         [array]$Download,
         [array]$PWAttributesList,
         [array]$Federation,
+        [array]$WildcardSelection,
         [array]$Lookups
     )
 
@@ -157,6 +166,7 @@ function Save-PipelineJsonConfiguration {
         download         = @($Download | Where-Object { $null -ne $_ })
         pwAttributesList = @($PWAttributesList | Where-Object { $null -ne $_ })
         federation       = @($Federation | Where-Object { $null -ne $_ })
+        wildcardSelection = @($WildcardSelection | Where-Object { $null -ne $_ })
         lookups          = @($Lookups | Where-Object { $null -ne $_ })
     }
     $json = $document | ConvertTo-Json -Depth 12
