@@ -1,6 +1,6 @@
 # Federation Automation Guide (Friendly Version)
 
-Version date: 2026-06-25  
+Version date: 2026-06-26  
 Applies to: `Federation-Automation.exe`, `006-Main.ps1` / `006-Main.exe`
 
 ## 1. What This Process Does
@@ -13,8 +13,8 @@ In simple terms, it does four jobs:
    The process reads the `Download` range in the config file and stages matching supported model files into `SourceFolder`. Each active `Download` row can point either to a ProjectWise folder or to a local/synced filesystem folder. ProjectWise rows log into the relevant datasource and capture available ProjectWise metadata. Local rows copy files directly from the listed folder without using ProjectWise or the ProjectWise PowerShell module. At the same time the process builds an attributes workbook, usually `PWAttributes.xlsx`, that gives the processing stage a consistent file list and metadata snapshot.
 2. Inject selected metadata into IFC files.
    After download, the process reads the attributes workbook together with the `PWAttributesList`, `Federation`, and `Lookups` config ranges. It then creates updated IFC copies in the processed folder, sets the `IfcProject` name to match the full source file name, and adds property sets directly into each IFC so selected metadata and filename-derived values become visible inside downstream tools. This stage does not blindly reprocess everything every time: it keeps metadata records from previous runs and skips IFCs that have not changed in file content or attribute payload, unless processing is forced.
-3. Federate supported model files into Navisworks NWD models.
-   Once source files are ready, choose either **Naming Convention and Lookups** or **Wildcard Selection**. Naming Convention and Lookups uses the `Federation` and `Lookups` rules to build grouped and final NWDs from filename parts. Wildcard Selection creates the explicitly named NWD outputs defined in its ordered rules, including multi-level hierarchies. Federation can run from the processed folder or directly from `SourceFolder`, depending on settings and whether the processing stage ran.
+3. Federate supported model files into Navisworks outputs.
+   Once source files are ready, choose either **Naming Convention and Lookups** or **Wildcard Selection**. Naming Convention and Lookups uses the `Federation` and `Lookups` rules to build grouped NWDs and a final NWD or NWF from filename parts. Wildcard Selection creates the explicitly named NWD or NWF outputs defined in its ordered rules, including multi-level hierarchies. Federation can run from the processed folder or directly from `SourceFolder`, depending on settings and whether the processing stage ran.
 4. Publish the latest valid federated model to Revizto (if enabled).
    If Revizto publishing is enabled in `Settings`, the process checks whether a valid final federated model exists and whether it is new enough to publish. It then uses the configured `ReviztoPublishCode` to run the Revizto console scheduler. This means the script is not just creating files locally; it can also complete the last handoff step and push the newest federated model into the Revizto workflow when the required conditions are met.
 
@@ -111,7 +111,7 @@ This allows one EXE to be reused with multiple JSON or Excel configurations whil
 
 ### 3.4 What the EXE does at startup
 
-When the EXE starts, it first works from its own folder, then checks the configuration location, loads its bundled support logic, reads the configuration, and starts logging. It does not change the user's PowerShell execution policy. After that, it runs the enabled pipeline stages according to the saved settings.
+When the EXE starts, it first works from its own folder, then sets the current process execution policy to `RemoteSigned` so required PowerShell modules can load, checks the configuration location, loads its bundled support logic, reads the configuration, and starts logging. The GUI and shared Excel reader also apply the same process-only setting before loading `ImportExcel` for Excel import/export. This does not change the user's machine or profile execution policy. After that, it runs the enabled pipeline stages according to the saved settings.
 
 ### 3.5 Using the Federation Automation GUI
 
@@ -128,7 +128,7 @@ Use **Save** to keep configuration changes without running the process, or **Sav
 
 ## 4. Introduction to the Config File and How to Set It Up
 
-The behaviour and logic are controlled by a JSON configuration file, typically named `Config.json`. The application can open legacy Excel configurations and export the current JSON settings back to Excel when needed.
+The behaviour and logic are controlled by a JSON configuration file, typically named `Config.json`. The application can open legacy Excel configurations and export the current JSON settings back to Excel when needed. The current Excel template is `Federation-Automation-Config.xlsx`; `Config.xlsx` is also supported as the default legacy Excel file name when no JSON configuration is present.
 
 The configuration contains these collections (Excel uses the same named ranges):
 
@@ -139,7 +139,7 @@ The configuration contains these collections (Excel uses the same named ranges):
 - `WildcardSelection`
 - `Lookups`
 
-Note for legacy Excel configurations: the process does not read arbitrary sheets or tables; it looks for the named ranges/areas listed above. Use the provided template when maintaining an Excel configuration.
+Note for legacy Excel configurations: the process does not read arbitrary sheets or tables; it looks for the named ranges/areas listed above. Use the provided current template when maintaining an Excel configuration, especially after schema changes such as `WildcardSelection`, NWC federation, and NWF output support.
 
 ### 4.1 `Settings` range (control panel)
 
@@ -208,7 +208,7 @@ Path and file keywords and assumptions:
   - `FederationInputFolder`: folder used as federation source; if blank, script derives it from run context:
     - uses `ProcessedFolder` when processing is enabled.
     - uses `SourceFolder` when processing is skipped.
-- `FederationOutputFolder`: where grouped NWDs and final federated NWDs are written (default `Output`). Wildcard rules can also read NWDs from this folder to build higher-level outputs.
+- `FederationOutputFolder`: where grouped NWDs and the final federated model are written (default `Output`). Wildcard rules can also read NWDs from this folder to build higher-level outputs.
   - Absolute paths are used as-is
   - Relative paths are resolved from EXE/PS1 folder
   - Known `C:\Users\<other>\...` synced roots are remapped to current user
@@ -223,7 +223,10 @@ Path and file keywords and assumptions:
 - File-name parameters:
   - `AttributesFile`: name of the Excel workbook that stores the staged source metadata snapshot (`Attributes` table) used by the process stage for IFC attribute injection; written under `SourceFolder`.
 - `FederatedFileName`: name of the final federated Navisworks model produced by the federation stage; written under `FederationOutputFolder` and used as the publish source for Revizto.
-  - `.nwd` is auto-added to `FederatedFileName` if omitted
+  - If the name ends with `.nwf`, only the final federated model is saved as NWF.
+  - If the name ends with `.nwd`, the final federated model is saved as NWD.
+  - If no Navisworks extension is supplied, `.nwd` is added automatically.
+  - Grouped intermediate models and the unmatched-files model are still saved as NWD.
   - `IncludeUnmatchedFilesInFederatedModel`:
     - Purpose: controls whether the separate unmatched-files NWD is appended into the final federated model.
     - Accepted disable values: `No`, `N`, `False`, `0`, `Ignore`
@@ -461,7 +464,11 @@ How each row works:
 
 - `Inclusions` is required. Enter one or more comma-separated Windows wildcard patterns. A file is included when it matches **any** pattern. Matching is case-insensitive and includes the file extension; for example, `HAZ*ARC*.ifc`.
 - `Exclusions` is optional. Enter comma-separated wildcard patterns. A matching file is excluded if it matches **any** exclusion pattern.
-- `ExportFileName` is required and names the NWD created by the rule. Each row must have a unique output name; duplicate names stop the federation to prevent an earlier NWD from being overwritten.
+- `ExportFileName` is required and names the Navisworks file created by the rule.
+  - If the name ends with `.nwf`, that wildcard row is saved as NWF.
+  - If the name ends with `.nwd`, that wildcard row is saved as NWD.
+  - If no Navisworks extension is supplied, `.nwd` is added automatically.
+  - Each row must have a unique output base name; duplicate names stop the federation to prevent an earlier output from being overwritten.
 - `ReadFromOutputFolder` is `No` for source-model rules and `Yes` when the rule should read NWDs already created in `FederationOutputFolder`.
 
 There is no separate final-model checkbox or `FederatedFileName` step in this mode. To create a top-level model, add a later row that reads from the output folder and includes exactly the earlier NWDs you want. The last successfully created wildcard output is treated as the latest top-level result for run-state and optional Revizto publishing.
@@ -662,15 +669,16 @@ Typical outputs from this stage:
 
 ### 5.4 Stage C: Federation
 
-Purpose: generate NWD outputs using the selected federation grouping method.
+Purpose: generate Navisworks federation outputs using the selected federation grouping method.
 
 How it works:
 
-- Uses supported federation source files from the federation input folder, currently `.ifc`, `.dwg`, `.dgn`, and `.rvt`.
+- Uses supported federation source files from the federation input folder, currently `.ifc`, `.dwg`, `.dgn`, `.rvt`, and `.nwc`.
+- NWC files are accepted, but generated cache files are skipped when the matching source model is present in the same folder. For example, `Model.nwc` or `Model.ifc.nwc` is skipped when `Model.ifc` is also present.
 - **Naming Convention and Lookups** uses `Federation` filename-part rules, optional `Lookups`, bottom-up grouping, `NWDNamingMethod`, and the optional unmatched-files NWD.
-- **Wildcard Selection** evaluates the `WildcardSelection` rules in row order. Source rules read supported model files; output-folder rules read prior NWD outputs and can form higher-level models.
-- A wildcard row with no matches is warned and skipped. Duplicate wildcard `ExportFileName` values stop the stage rather than overwrite an NWD.
-- Wildcard Selection creates only the NWDs specified by its rules; create the top-level federation explicitly as a final output-folder rule.
+- **Wildcard Selection** evaluates the `WildcardSelection` rules in row order. Source rules read supported model files, including standalone NWC files after generated-cache filtering. Output-folder rules read prior Navisworks outputs and can form higher-level models.
+- A wildcard row with no matches is warned and skipped. Duplicate wildcard `ExportFileName` base names stop the stage rather than overwrite an output.
+- Wildcard Selection creates only the outputs specified by its rules; create the top-level federation explicitly as a final output-folder rule. A wildcard output is NWF only when that row's `ExportFileName` ends with `.nwf`; otherwise it defaults to NWD.
 
 Key rules for this stage:
 
@@ -696,9 +704,11 @@ Key rules for this stage:
 - The unmatched-files NWD name is built automatically as:
   - `<FederatedFileName without extension> - Unmatched Files.nwd`
 - The final federated model includes the unmatched-files NWD only when `IncludeUnmatchedFilesInFederatedModel` is enabled.
-- If `NavisworksViewsImportXML` resolves to an existing XML file, the final federated NWD command adds:
+- The final federated model is saved as NWF only when `FederatedFileName` explicitly ends with `.nwf`; otherwise it is saved as NWD.
+- Revizto publishing uses the final/top-level model path detected by the run. If the final model is NWF, the user must configure the Revizto scheduler task to publish that NWF.
+- If `NavisworksViewsImportXML` resolves to an existing XML file, the final federated model command adds:
   - `-ExecuteAddInPlugin NativeExportPluginAdaptor_XmlViewpointsImportPlugin_Import.Navisworks <xml file>`
-- The viewpoints import is applied to the final federated NWD only.
+- The viewpoints import is applied to the final federated model only.
 - Grouped intermediate NWDs and the unmatched-files NWD are not affected by `NavisworksViewsImportXML`.
 - Navisworks handling:
   - If the requested version is not installed, the script tries the highest installed version.
@@ -707,11 +717,12 @@ Key rules for this stage:
   - no supported federation files found -> stage stops
   - grouped NWD naming collision -> stage stops
   - no grouped NWDs and no unmatched-files NWD produced -> stage stops
-  - final federated NWD missing -> stage stops, except when only unmatched files exist and `IncludeUnmatchedFilesInFederatedModel=No`
+  - final federated model missing -> stage stops, except when only unmatched files exist and `IncludeUnmatchedFilesInFederatedModel=No`
 
 Typical outputs from this stage:
 
-- `FederationOutputFolder\*.nwd` (grouped NWDs, unmatched-files NWD when needed, plus the final federated file)
+- `FederationOutputFolder\*.nwd` (grouped NWDs and unmatched-files NWD when needed)
+- the final federated file as `.nwd` or `.nwf`, based on `FederatedFileName`
 - `FederationOutputFolder\federation-summary.json`
 
 ### 5.5 Stage D: Revizto Publish

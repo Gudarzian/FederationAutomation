@@ -10,6 +10,20 @@ param(
     [string]$ConfigFile
 )
 
+function Enable-FEDAUTOProcessModuleLoading {
+    try {
+        $processPolicy = Get-ExecutionPolicy -Scope Process
+        if ($processPolicy -notin @('RemoteSigned','Unrestricted')) {
+            Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned -Force -ErrorAction Stop
+        }
+    }
+    catch {
+        Write-Warning "Unable to set process execution policy to RemoteSigned. Module imports may be blocked: $($_.Exception.Message)"
+    }
+}
+
+Enable-FEDAUTOProcessModuleLoading
+
 # Resolve the folder that this script (or its host assembly) lives in.
 $basePath = if ($PSCommandPath) { Split-Path -Parent $PSCommandPath }
 elseif ($null -ne $MyInvocation.MyCommand.Path -and $MyInvocation.MyCommand.Path -ne '') {
@@ -309,9 +323,20 @@ Write-SettingsLine -Name "RunDownload" -Value $runDownloadDisplay -Source $runDo
 $federatedFileSetting = Get-SettingValue -Settings $settingsCache -Names @('FederatedFileName')
 $federatedFileSource = if ($federatedFileSetting) { "Settings" } else { if ($settingsMissing) { "Default (Settings missing)" } else { "Default" } }
 if ([string]::IsNullOrWhiteSpace($federatedFileSetting)) { $federatedFileSetting = $federatedDefault }
-if (-not $federatedFileSetting.EndsWith('.nwd', [System.StringComparison]::OrdinalIgnoreCase)) {
-    $federatedFileSetting = "{0}.nwd" -f $federatedFileSetting
+$finalModelIsNwf = if (Get-Command Test-FinalNavisworksFileNameIsNwf -ErrorAction SilentlyContinue) {
+    Test-FinalNavisworksFileNameIsNwf -Name $federatedFileSetting
 }
+else {
+    $federatedFileSetting.EndsWith('.nwf', [System.StringComparison]::OrdinalIgnoreCase)
+}
+$finalOutputExtension = if ($finalModelIsNwf) { '.nwf' } else { '.nwd' }
+if (Get-Command Resolve-NavisworksOutputBaseName -ErrorAction SilentlyContinue) {
+    $federatedFileSetting = Resolve-NavisworksOutputBaseName -Name $federatedFileSetting
+}
+elseif ($federatedFileSetting.EndsWith('.nwd', [System.StringComparison]::OrdinalIgnoreCase) -or $federatedFileSetting.EndsWith('.nwf', [System.StringComparison]::OrdinalIgnoreCase)) {
+    $federatedFileSetting = $federatedFileSetting.Substring(0, $federatedFileSetting.Length - 4)
+}
+$federatedFileSetting = "{0}{1}" -f $federatedFileSetting, $finalOutputExtension
 Write-SettingsLine -Name "FederatedFileName" -Value $federatedFileSetting -Source $federatedFileSource
 
 $includeUnmatchedSettingValue = Get-SettingValue -Settings $settingsCache -Names @('IncludeUnmatchedFilesInFederatedModel')
@@ -479,9 +504,14 @@ function Resolve-FinalFederatedModelPath {
 
     $federatedName = Get-SettingValue -Settings $Settings -Names @('FederatedFileName')
     if ([string]::IsNullOrWhiteSpace($federatedName)) { $federatedName = 'Project Federated' }
-    if (-not $federatedName.EndsWith('.nwd', [System.StringComparison]::OrdinalIgnoreCase)) {
-        $federatedName = "{0}.nwd" -f $federatedName
+    $outputExtension = if ($federatedName.EndsWith('.nwf', [System.StringComparison]::OrdinalIgnoreCase)) { '.nwf' } else { '.nwd' }
+    if (Get-Command Resolve-NavisworksOutputBaseName -ErrorAction SilentlyContinue) {
+        $federatedName = Resolve-NavisworksOutputBaseName -Name $federatedName
     }
+    elseif ($federatedName.EndsWith('.nwd', [System.StringComparison]::OrdinalIgnoreCase) -or $federatedName.EndsWith('.nwf', [System.StringComparison]::OrdinalIgnoreCase)) {
+        $federatedName = $federatedName.Substring(0, $federatedName.Length - 4)
+    }
+    $federatedName = "{0}{1}" -f $federatedName, $outputExtension
     if (-not [System.IO.Path]::IsPathRooted($outputFolder)) {
         $outputFolder = Join-Path $RootPath $outputFolder
     }
@@ -744,9 +774,14 @@ try {
         if ($outputFolderValue) {
             $federatedFileName = $settings | Where-Object { $_.Parameter -eq "FederatedFileName" } | Select-Object -ExpandProperty Value
             if ([string]::IsNullOrWhiteSpace($federatedFileName)) { $federatedFileName = 'Project Federated' }
-            if (-not $federatedFileName.EndsWith('.nwd', [System.StringComparison]::OrdinalIgnoreCase)) {
-                $federatedFileName = "{0}.nwd" -f $federatedFileName
+            $finalExtension = if ($federatedFileName.EndsWith('.nwf', [System.StringComparison]::OrdinalIgnoreCase)) { '.nwf' } else { '.nwd' }
+            if (Get-Command Resolve-NavisworksOutputBaseName -ErrorAction SilentlyContinue) {
+                $federatedFileName = Resolve-NavisworksOutputBaseName -Name $federatedFileName
             }
+            elseif ($federatedFileName.EndsWith('.nwd', [System.StringComparison]::OrdinalIgnoreCase) -or $federatedFileName.EndsWith('.nwf', [System.StringComparison]::OrdinalIgnoreCase)) {
+                $federatedFileName = $federatedFileName.Substring(0, $federatedFileName.Length - 4)
+            }
+            $federatedFileName = "{0}{1}" -f $federatedFileName, $finalExtension
             $finalModelPath = Join-Path $outputFolderValue $federatedFileName
             if (-not (Test-Path $finalModelPath -PathType Leaf)) {
                 $finalModelMissing = $true

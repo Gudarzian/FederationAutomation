@@ -104,6 +104,72 @@ Builds one NWD name segment for a grouped field based on the configured naming m
     }
 }
 
+function Resolve-NavisworksOutputFormat {
+<#
+Normalizes the requested Navisworks output format.
+#>
+    [CmdletBinding()]
+    param([string]$Value)
+
+    $text = Normalize-ExcelText -Text $Value
+    if ([string]::IsNullOrWhiteSpace($text)) { return 'NWD' }
+    switch ($text.ToLowerInvariant()) {
+        'nwf' { return 'NWF' }
+        'nwd' { return 'NWD' }
+        default { return 'NWD' }
+    }
+}
+
+function Get-NavisworksOutputExtension {
+    [CmdletBinding()]
+    param([string]$OutputFormat)
+
+    if ((Resolve-NavisworksOutputFormat -Value $OutputFormat) -eq 'NWF') { return '.nwf' }
+    return '.nwd'
+}
+
+function Resolve-NavisworksOutputBaseName {
+    [CmdletBinding()]
+    param([string]$Name)
+
+    $baseName = Normalize-ExcelText -Text $Name
+    if ([string]::IsNullOrWhiteSpace($baseName)) { return $baseName }
+    if ($baseName.EndsWith('.nwd', [System.StringComparison]::OrdinalIgnoreCase) -or
+        $baseName.EndsWith('.nwf', [System.StringComparison]::OrdinalIgnoreCase)) {
+        return $baseName.Substring(0, $baseName.Length - 4)
+    }
+    return $baseName
+}
+
+function Test-FinalNavisworksFileNameIsNwf {
+<#
+Only the final federated model may switch to NWF, and only when the configured
+final filename explicitly ends with .nwf.
+#>
+    [CmdletBinding()]
+    param([string]$Name)
+
+    $text = Normalize-ExcelText -Text $Name
+    if ([string]::IsNullOrWhiteSpace($text)) { return $false }
+    return $text.EndsWith('.nwf', [System.StringComparison]::OrdinalIgnoreCase)
+}
+
+function Resolve-NavisworksOutputFormatFromFileName {
+<#
+Returns NWF only when a configured output filename explicitly ends with .nwf.
+All other values default to NWD, including blank names and names without an
+extension.
+#>
+    [CmdletBinding()]
+    param([string]$Name)
+
+    $text = Normalize-ExcelText -Text $Name
+    if (-not [string]::IsNullOrWhiteSpace($text) -and $text.EndsWith('.nwf', [System.StringComparison]::OrdinalIgnoreCase)) {
+        return 'NWF'
+    }
+    return 'NWD'
+}
+
 function Get-GroupHierarchyNodeNames {
 <#
 Returns the FullName values for all non-leaf grouping nodes.
@@ -139,6 +205,40 @@ Returns a filesystem-safe file name derived from a label.
     $sb = New-Object System.Text.StringBuilder($Name)
     foreach ($ch in $invalid) { [void]$sb.Replace($ch, '_') }
     ($sb.ToString()).Trim().Trim('.')
+}
+
+function Get-FederationCandidateFiles {
+<#
+Returns supported federation source files and skips Navisworks cache files that
+were generated from source model files already present in the same folder.
+#>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [string[]]$Extensions = @('.ifc', '.dwg', '.dgn', '.rvt', '.nwc'),
+        [switch]$KeepGeneratedNwc
+    )
+
+    $allFiles = @(Get-ChildItem -LiteralPath $Path -File -ErrorAction Stop)
+    $normalizedExtensions = @($Extensions | ForEach-Object { $_.ToLowerInvariant() })
+    $candidates = @($allFiles | Where-Object { $normalizedExtensions -contains $_.Extension.ToLowerInvariant() })
+    if ($KeepGeneratedNwc) { return $candidates }
+
+    $sourceExtensions = @('.ifc', '.dwg', '.dgn', '.rvt')
+    $generatedNwcNames = @{}
+    foreach ($source in @($allFiles | Where-Object { $sourceExtensions -contains $_.Extension.ToLowerInvariant() })) {
+        $generatedNwcNames["$($source.BaseName).nwc".ToLowerInvariant()] = $true
+        $generatedNwcNames["$($source.Name).nwc".ToLowerInvariant()] = $true
+    }
+
+    $filtered = @()
+    foreach ($candidate in $candidates) {
+        if ($candidate.Extension.ToLowerInvariant() -eq '.nwc' -and $generatedNwcNames.ContainsKey($candidate.Name.ToLowerInvariant())) {
+            continue
+        }
+        $filtered += $candidate
+    }
+    return $filtered
 }
 
 function Resolve-NavisworksInstallPath {
@@ -199,8 +299,8 @@ if (-not (Get-Variable -Name PWAttributeDefinitions -Scope Script -ErrorAction S
 
 function CreateNwd {
 <#
-Creates a Navisworks NWD from a group node.
-- Leaf groups: Children are IFC paths; parents: Children are child NWDs.
+Creates a Navisworks model from a group node.
+- Leaf groups: Children are source model paths; parents: Children are child Navisworks outputs.
 - Uses the group's FullName for output name (sanitized in caller where used).
 #>
     param(
@@ -210,6 +310,7 @@ Creates a Navisworks NWD from a group node.
         $NavisworksOptions = $NavisworksOptions,
         $NavisworksOptionsPath = $NavisworksOptionsPath,
         $NavisworksViewsImportXmlPath = $NavisworksViewsImportXmlPath,
+        $OutputFormat = 'NWD',
         $BasePath = $BasePath
     )
     # Basic runtime info for console/trace logs.
@@ -218,7 +319,9 @@ Creates a Navisworks NWD from a group node.
 
     # Output name is derived from the grouping hierarchy and sanitized for filesystem.
     $safeName      = Get-SafeFileName -Name $InputFiles.FullName
-    $outputNwd     = $OutputPath + "\" + $safeName + ".nwd"
+    $resolvedOutputFormat = Resolve-NavisworksOutputFormat -Value $OutputFormat
+    $outputExtension = Get-NavisworksOutputExtension -OutputFormat $resolvedOutputFormat
+    $outputModel   = $OutputPath + "\" + $safeName + $outputExtension
     $navisworksDir = Resolve-NavisworksInstallPath -Version $NavisworksVersion
     $roamerExe     = if ($navisworksDir) { Join-Path $navisworksDir 'Roamer.exe' } else { $null }
 
@@ -227,7 +330,7 @@ Creates a Navisworks NWD from a group node.
     foreach ($Inputfile in $InputFiles.Children) {
         $arg += '-AppendFile', $Inputfile
     }
-    $arg += '-SaveFile', $outputNwd
+    $arg += '-SaveFile', $outputModel
     $arg += $GNWUI
 
     # Resolve options: Settings override > fallback to NavisworksOptions.xml.
@@ -280,12 +383,12 @@ Creates a Navisworks NWD from a group node.
     $minutes = [math]::Round((New-TimeSpan -Start $start -End $end).TotalMinutes, 2)
 
     $logTxt = @"
-NWD processed for $outputNwd
+Navisworks $resolvedOutputFormat processed for $outputModel
 Number of model(s) federated: $($InputFiles.Children.Count)
 Navisworks Version: $NavisworksVersion
 End Time: $end
 Time spent: $minutes minutes
-NWD output path: $outputNwd
+Navisworks output path: $outputModel
 Model(s) federated: $([string]::Join(', ', $InputFiles.Children))
 NW Arguments: $argString
 "@
@@ -293,9 +396,10 @@ NW Arguments: $argString
 
     # Return a summary object for further use
     [pscustomobject]@{
-        Model             = $outputNwd
+        Model             = $outputModel
         FederatedFiles    = $InputFiles.Children
         OutputPath        = $OutputPath
+        OutputFormat      = $resolvedOutputFormat
         NavisworksVersion = $NavisworksVersion
         StartTime         = $start
         EndTime           = $end
@@ -312,9 +416,10 @@ function FederateGroup {
         [int]$Level = 0,
         [string]$NavisworksOptionsPath,
         [string]$NavisworksOptions,
+        [string]$OutputFormat = 'NWD',
         [string]$BasePath
     )
-    # Print the tree and federate bottom-up so child NWDs exist for parents.
+    # Print the tree and federate bottom-up so child outputs exist for parents.
     $indent = ' ' * ($Level * 2)
     Write-Host "$indent$($Group.FullName)" -ForegroundColor Cyan
 
@@ -328,19 +433,19 @@ function FederateGroup {
             FullName = $Group.FullName
             Children = $childOutputs
         }
-        $res = CreateNwd -InputFiles $groupForCreate -NavisworksOptionsPath $NavisworksOptionsPath -NavisworksOptions $NavisworksOptions -BasePath $BasePath
+        $res = CreateNwd -InputFiles $groupForCreate -NavisworksOptionsPath $NavisworksOptionsPath -NavisworksOptions $NavisworksOptions -OutputFormat $OutputFormat -BasePath $BasePath
         return $res.Model
     }
     else {
         foreach ($file in $Group.Children) { Write-Host "$indent  $file" }
-        $res = CreateNwd -InputFiles $Group -NavisworksOptionsPath $NavisworksOptionsPath -NavisworksOptions $NavisworksOptions -BasePath $BasePath
+        $res = CreateNwd -InputFiles $Group -NavisworksOptionsPath $NavisworksOptionsPath -NavisworksOptions $NavisworksOptions -OutputFormat $OutputFormat -BasePath $BasePath
         return $res.Model
     }
 }
 
 function Invoke-GroupFilesForFedProcess {
 <#
-Groups IFCs and federates them into NWD outputs.
+Groups IFCs and federates them into Navisworks outputs.
 #>
     [CmdletBinding()]
     param(
@@ -525,9 +630,9 @@ Groups IFCs and federates them into NWD outputs.
     }
     $FederatedFileName = $ConfigSettings | Where-Object { $_.Parameter -eq "FederatedFileName" } | Select-Object -ExpandProperty Value
     if ([string]::IsNullOrWhiteSpace($FederatedFileName)) { $FederatedFileName = 'Project Federated' }
-    if ($FederatedFileName.EndsWith('.nwd', [System.StringComparison]::OrdinalIgnoreCase)) {
-        $FederatedFileName = $FederatedFileName.Substring(0, $FederatedFileName.Length - 4)
-    }
+    $finalOutputFormat = if (Test-FinalNavisworksFileNameIsNwf -Name $FederatedFileName) { 'NWF' } else { 'NWD' }
+    $finalOutputExtension = Get-NavisworksOutputExtension -OutputFormat $finalOutputFormat
+    $FederatedFileName = Resolve-NavisworksOutputBaseName -Name $FederatedFileName
     $nwdNamingMethod = 'full'
     $nwdNamingMethodRow = $ConfigSettings | Where-Object {
         $paramRaw = $_.Parameter
@@ -623,7 +728,8 @@ Groups IFCs and federates them into NWD outputs.
         Write-Host "Navisworks viewpoints import XML (final model only): [not used]"
     }
     Write-Host "GUI mode: $GNWUI"
-    Write-Host "Federated file name: $FederatedFileName"
+    Write-Host "Final Navisworks output format: $finalOutputFormat"
+    Write-Host "Federated file name: $FederatedFileName$finalOutputExtension"
     Write-Host "NWD naming method: $nwdNamingMethod"
     Write-Host "Include unmatched in final federated model: $(if ($includeUnmatchedFilesInFederatedModel) { 'Yes' } else { 'No' })"
 
@@ -636,7 +742,7 @@ Groups IFCs and federates them into NWD outputs.
         $ruleSummary = @()
         $createdOutputNames = @{}
         $lastCreatedModelPath = $null
-        $federatableExtensions = if (Get-Command Get-FederatableModelExtensions -ErrorAction SilentlyContinue) { Get-FederatableModelExtensions } else { @('.ifc', '.dwg', '.dgn', '.rvt') }
+        $federatableExtensions = if (Get-Command Get-FederatableModelExtensions -ErrorAction SilentlyContinue) { Get-FederatableModelExtensions } else { @('.ifc', '.dwg', '.dgn', '.rvt', '.nwc') }
         for ($ruleIndex = 0; $ruleIndex -lt $wildcardRows.Count; $ruleIndex++) {
             $rule = $wildcardRows[$ruleIndex]
             $inclusionText = [string](Get-RowValue -Row $rule -Candidates @('Inclusions','Inclusion'))
@@ -650,16 +756,20 @@ Groups IFCs and federates them into NWD outputs.
                 Write-Warning $warning; Write-Log -Message $warning -Color 'Yellow' -Settings $ConfigSettings -LogsFolderOverride $LogsFolder -BasePath $basePath
                 continue
             }
-            if ($outputName.EndsWith('.nwd', [StringComparison]::OrdinalIgnoreCase)) { $outputName = $outputName.Substring(0, $outputName.Length - 4) }
+            $ruleOutputFormat = Resolve-NavisworksOutputFormatFromFileName -Name $outputName
+            $ruleOutputExtension = Get-NavisworksOutputExtension -OutputFormat $ruleOutputFormat
+            $outputName = Resolve-NavisworksOutputBaseName -Name $outputName
             if ([string]::IsNullOrWhiteSpace($outputName) -or $outputName.IndexOfAny([IO.Path]::GetInvalidFileNameChars()) -ge 0) { throw "Wildcard rule $($ruleIndex + 1) has an invalid ExportFileName." }
             if ($createdOutputNames.ContainsKey($outputName.ToLowerInvariant())) { throw "Wildcard rules cannot use duplicate ExportFileName values: '$outputName'." }
             $createdOutputNames[$outputName.ToLowerInvariant()] = $true
             $sourcePath = if ($readFromOutput) { $OutputPath } else { $InputFolderPath }
-            $targetPath = Join-Path $OutputPath ("$outputName.nwd")
-            $candidates = @(Get-ChildItem -LiteralPath $sourcePath -File -ErrorAction Stop | Where-Object {
-                ($readFromOutput -or $federatableExtensions -contains $_.Extension.ToLowerInvariant()) -and
-                $_.FullName -ne $targetPath
-            })
+            $targetPath = Join-Path $OutputPath ("$outputName$ruleOutputExtension")
+            $candidates = if ($readFromOutput) {
+                @(Get-ChildItem -LiteralPath $sourcePath -File -ErrorAction Stop | Where-Object { $_.FullName -ne $targetPath })
+            }
+            else {
+                @(Get-FederationCandidateFiles -Path $sourcePath -Extensions $federatableExtensions | Where-Object { $_.FullName -ne $targetPath })
+            }
             $matches = @($candidates | Where-Object {
                 $name = $_.Name
                 ($inclusions | Where-Object { $name -like $_ }).Count -gt 0 -and
@@ -668,15 +778,15 @@ Groups IFCs and federates them into NWD outputs.
             if ($matches.Count -eq 0) {
                 $warning = "Wildcard rule $($ruleIndex + 1) '$outputName' matched no files in '$sourcePath'; skipped."
                 Write-Warning $warning; Write-Log -Message $warning -Color 'Yellow' -Settings $ConfigSettings -LogsFolderOverride $LogsFolder -BasePath $basePath
-                $ruleSummary += [pscustomobject]@{ Rule=$ruleIndex + 1; ExportFileName="$outputName.nwd"; SourceFolder=$sourcePath; MatchedFiles=@(); Status='Skipped - no matches' }
+                $ruleSummary += [pscustomobject]@{ Rule=$ruleIndex + 1; ExportFileName="$outputName$ruleOutputExtension"; OutputFormat=$ruleOutputFormat; SourceFolder=$sourcePath; MatchedFiles=@(); Status='Skipped - no matches' }
                 continue
             }
-            $result = CreateNwd -InputFiles ([pscustomobject]@{ FullName=$outputName; Children=$matches }) -OutputPath $OutputPath -NavisworksVersion $NavisworksVersion -NavisworksOptionsPath $NavisworksOptions -NavisworksOptions $NavisworksOptions -BasePath $basePath
-            if (-not $result.Model -or -not (Test-Path -LiteralPath $result.Model -PathType Leaf)) { throw "Wildcard rule $($ruleIndex + 1) failed to create '$outputName.nwd'." }
+            $result = CreateNwd -InputFiles ([pscustomobject]@{ FullName=$outputName; Children=$matches }) -OutputPath $OutputPath -NavisworksVersion $NavisworksVersion -NavisworksOptionsPath $NavisworksOptions -NavisworksOptions $NavisworksOptions -OutputFormat $ruleOutputFormat -BasePath $basePath
+            if (-not $result.Model -or -not (Test-Path -LiteralPath $result.Model -PathType Leaf)) { throw "Wildcard rule $($ruleIndex + 1) failed to create '$outputName$ruleOutputExtension'." }
             $lastCreatedModelPath = $result.Model
-            $ruleSummary += [pscustomobject]@{ Rule=$ruleIndex + 1; ExportFileName="$outputName.nwd"; SourceFolder=$sourcePath; MatchedFiles=$matches; Status='Created' }
+            $ruleSummary += [pscustomobject]@{ Rule=$ruleIndex + 1; ExportFileName="$outputName$ruleOutputExtension"; OutputFormat=$ruleOutputFormat; SourceFolder=$sourcePath; MatchedFiles=$matches; Status='Created' }
         }
-        if (-not $lastCreatedModelPath) { throw 'Wildcard Selection created no NWD outputs.' }
+        if (-not $lastCreatedModelPath) { throw "Wildcard Selection created no Navisworks outputs." }
         [ordered]@{ Timestamp=(Get-Date).ToUniversalTime().ToString('o'); GroupingMethod='Wildcard Selection'; InputFolderPath=$InputFolderPath; OutputFolderPath=$OutputPath; WildcardRules=$ruleSummary; LastCreatedModelPath=$lastCreatedModelPath } | ConvertTo-Json -Depth 10 | Set-Content -Path (Join-Path $OutputPath 'federation-summary.json') -Encoding UTF8
         if ($TranscriptStarted) { Stop-Transcript | Out-Null; $global:MainTranscriptActive = $false }
         return
@@ -751,11 +861,9 @@ Groups IFCs and federates them into NWD outputs.
         Get-FederatableModelExtensions
     }
     else {
-        @('.ifc', '.dwg', '.dgn', '.rvt')
+        @('.ifc', '.dwg', '.dgn', '.rvt', '.nwc')
     }
-    $modelCandidates = @(Get-ChildItem -Path $InputFolderPath -File -ErrorAction Stop | Where-Object {
-        $federatableExtensions -contains $_.Extension.ToLowerInvariant()
-    })
+    $modelCandidates = @(Get-FederationCandidateFiles -Path $InputFolderPath -Extensions $federatableExtensions)
     if ($modelCandidates.Count -eq 0) {
         $message = "No supported federation files found in input folder '$InputFolderPath'."
         Write-Log -Message $message -Color 'Red' -Settings $ConfigSettings -LogsFolderOverride $LogsFolder -BasePath $basePath
@@ -842,7 +950,7 @@ Groups IFCs and federates them into NWD outputs.
             FullName = $FederatedFileName
             Children = $finalInputModels
         }
-        $finalRes = CreateNwd -InputFiles $finalGroup -NavisworksOptionsPath $NavisworksOptions -NavisworksOptions $NavisworksOptions -NavisworksViewsImportXmlPath $NavisworksViewsImportXmlPath -BasePath $basePath
+        $finalRes = CreateNwd -InputFiles $finalGroup -NavisworksOptionsPath $NavisworksOptions -NavisworksOptions $NavisworksOptions -NavisworksViewsImportXmlPath $NavisworksViewsImportXmlPath -OutputFormat $finalOutputFormat -BasePath $basePath
         $finalModelPath = if ($finalRes) { $finalRes.Model } else { $null }
         if ([string]::IsNullOrWhiteSpace($finalModelPath) -or -not (Test-Path $finalModelPath -PathType Leaf)) {
             $message = ("Federation failed: final federated model was not created. Expected output path: '{0}'." -f $finalModelPath)
@@ -867,6 +975,7 @@ Groups IFCs and federates them into NWD outputs.
         Timestamp                              = (Get-Date).ToUniversalTime().ToString("o")
         InputFolderPath                        = $InputFolderPath
         OutputFolderPath                       = $OutputPath
+        FinalOutputFormat                      = $finalOutputFormat
         MatchedInputCount                      = $rows.Count
         MatchedInputFiles                      = @($rows | Select-Object -ExpandProperty FileName)
         UnmatchedInputCount                    = $unmatchedFiles.Count

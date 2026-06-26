@@ -1,26 +1,30 @@
-[Donate via PayPal](https://paypal.me/gudarzGudarzian)
-
 # Federation Automation
 
-Federation Automation is a Windows PowerShell tool for staging BIM model files, adding selected metadata to IFC files, grouping and federating models into Navisworks NWD outputs, and optionally publishing a final model to Revizto.
+Federation Automation is a Windows PowerShell tool for staging BIM model files, adding selected metadata to IFC files, grouping and federating models into Navisworks outputs, and optionally publishing a final model to Revizto.
 
 ## What it supports
 
 - Local and synchronised source folders, including ACC Desktop Connector, OneDrive, and SharePoint locations.
 - Optional ProjectWise source acquisition.
 - IFC metadata processing.
-- Filename-based grouping and Navisworks federation.
+- Filename-based or wildcard-based grouping and Navisworks federation.
+- Federation source files including `.ifc`, `.dwg`, `.dgn`, `.rvt`, and standalone `.nwc` files.
 - Optional Revizto publishing.
-- A GUI editor for JSON configuration, plus command-line automation.
+- A GUI editor for JSON and legacy Excel configuration, plus command-line automation.
 
 ## Quick start
 
-1. Copy `Scripts/Config.example.json` to `Scripts/Config.json`.
-2. Edit `Config.json` in `Federation-Automation.exe`, or edit it in a text editor.
-3. Configure at least the source folders, download rows, grouping rows, and output folder.
-4. Run `Federation-Automation.exe` for the GUI, or run `006-Main.exe` / `006-Main.ps1` for unattended operation.
+1. Edit the included generic `Scripts/Config.json` in `Federation-Automation.exe`, or edit it in a text editor.
+2. Configure at least the source folders, download rows, grouping rows, and output folder.
+3. Run `Federation-Automation.exe` for the GUI, or run `006-Main.exe` / `006-Main.ps1` for unattended operation.
+
+Set `FederatedFileName` to end in `.nwf` when the final Naming Convention output should be saved as NWF. Grouped intermediate outputs remain NWD. For Wildcard Selection, each row's `ExportFileName` controls that row: `.nwf` saves NWF, while `.nwd` or no extension defaults to NWD.
+
+`Scripts/Federation-Automation-Config.xlsx` is the current Excel template. `Scripts/Config.xlsx` is also provided for the default legacy Excel file name.
 
 When run with no configuration argument, `006-Main.exe` uses `Config.json` beside the EXE when available; otherwise it falls back to `Config.xlsx`.
+
+The EXEs set the current PowerShell process execution policy to `RemoteSigned` only when required so bundled logic and the `ImportExcel` module can load. This does not change the user's machine or profile policy.
 
 ## Build
 
@@ -30,7 +34,7 @@ See [the user manual](Docs/Federation-Automation-User-Manual-Friendly.md) for co
 
 ## Important security note
 
-Do not commit live configuration files, passwords, project paths, Revizto publish codes, logs, outputs, or model files. Start from `Config.example.json` and keep your real `Config.json` local.
+Do not commit live configuration files, passwords, project paths, Revizto publish codes, logs, outputs, or model files. The included `Config.json` is generic; keep project-specific configuration local.
 
 ## Licence and commercial use
 

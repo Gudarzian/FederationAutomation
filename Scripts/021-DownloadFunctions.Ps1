@@ -355,6 +355,7 @@ Downloads IFCs from ProjectWise and writes the attributes workbook.
     $searchFailureDetails = New-Object System.Collections.Generic.List[string]
 
     # Ensure Excel support is available. ProjectWise support is loaded only if a PW row is used.
+    Ensure-FEDAUTOProcessExecutionPolicy
     Ensure-ModuleAvailable -Name ImportExcel
     Import-Module ImportExcel -ErrorAction Stop
 

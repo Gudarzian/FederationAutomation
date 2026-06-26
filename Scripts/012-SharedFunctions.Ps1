@@ -21,6 +21,23 @@ function Ensure-ModuleAvailable {
 
 }
 
+function Ensure-FEDAUTOProcessExecutionPolicy {
+<#
+Allows locally installed PowerShell modules to load in this process only.
+#>
+    [CmdletBinding()]
+    param()
+    try {
+        $processPolicy = Get-ExecutionPolicy -Scope Process
+        if ($processPolicy -notin @('RemoteSigned','Unrestricted')) {
+            Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned -Force -ErrorAction Stop
+        }
+    }
+    catch {
+        Write-Warning "Unable to set process execution policy to RemoteSigned. Module loading may be blocked. $($_.Exception.Message)"
+    }
+}
+
 function Resolve-RelativePath {
 <#
 Resolves a relative path against a root path; returns rooted paths unchanged.
@@ -39,7 +56,7 @@ function Get-FederatableModelExtensions {
 <#
 Returns the model file extensions supported by the federation workflow.
 #>
-    return @('.ifc', '.dwg', '.dgn', '.rvt')
+    return @('.ifc', '.dwg', '.dgn', '.rvt', '.nwc')
 }
 
 function Get-ExcelDataSafe {
@@ -74,6 +91,7 @@ function Get-ExcelDataSafe {
     )
 
     # --- Ensure ImportExcel module is available ---
+    Ensure-FEDAUTOProcessExecutionPolicy
     Ensure-ModuleAvailable -Name ImportExcel
     Import-Module ImportExcel -ErrorAction Stop
 

@@ -9,6 +9,10 @@ if ($PSVersionTable.PSEdition -ne 'Desktop') {
 $basePath = Split-Path -Parent $PSCommandPath
 if (-not $OutputFile) { $OutputFile = Join-Path $basePath 'Federation-Automation.exe' }
 $inputFile = Join-Path $basePath '007-Gui.ps1'
+$pipelineFile = Join-Path $basePath '006-Main.exe'
+if (-not (Test-Path -LiteralPath $pipelineFile -PathType Leaf)) {
+    throw "Pipeline executable not found: $pipelineFile. Build it with 000-2Exe.ps1 before building the GUI launcher."
+}
 Import-Module ps2exe -ErrorAction Stop
 $resources = @{}
 foreach ($file in '012-SharedFunctions.Ps1','013-ConfigFunctions.Ps1') {
@@ -22,4 +26,9 @@ $splat = @{ InputFile = $inputFile; OutputFile = $OutputFile; NoConsole = $true;
 if ($resourceParameter) { $splat[$resourceParameter] = $resources } else { Write-Warning 'This PS2EXE version cannot embed support files; keep 012-SharedFunctions.Ps1 and 013-ConfigFunctions.ps1 beside the EXE.' }
 Invoke-PS2EXE @splat
 if (-not (Test-Path $OutputFile)) { throw "Build failed: $OutputFile was not created." }
+$outputDirectory = Split-Path -Parent $OutputFile
+$deployedPipeline = Join-Path $outputDirectory '006-Main.exe'
+if (([IO.Path]::GetFullPath($pipelineFile)) -ne ([IO.Path]::GetFullPath($deployedPipeline))) {
+    Copy-Item -LiteralPath $pipelineFile -Destination $deployedPipeline -Force
+}
 Write-Host "Built GUI launcher: $OutputFile" -ForegroundColor Green

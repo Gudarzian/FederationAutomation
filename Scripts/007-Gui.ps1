@@ -370,6 +370,22 @@ function Show-FEDAUTOGroupingOptions {
     $legacyPanel.Visibility = if ($isWildcard) { 'Collapsed' } else { 'Visible' }
 }
 
+function Get-FEDAUTOProcessEnabled {
+    $processSetting = $script:SettingsRows | Where-Object { $_.Parameter -eq 'RunProcess' } | Select-Object -First 1
+    if (-not $processSetting -or $null -eq $processSetting.Value) { return $false }
+    return $processSetting.Value.ToString().Trim().ToLowerInvariant() -notin @('no','n','false','0','ignore','')
+}
+
+function Update-FEDAUTOAttributesProcessingColumns {
+    if (-not $AttributesGrid) { return }
+    $visibility = if (Get-FEDAUTOProcessEnabled) { [Windows.Visibility]::Visible } else { [Windows.Visibility]::Collapsed }
+    foreach ($column in $AttributesGrid.Columns) {
+        if ($column.SortMemberPath -eq 'InjectToIFC' -or $column.Header -eq 'InjectToIFC') {
+            $column.Visibility = $visibility
+        }
+    }
+}
+
 function Get-SettingControlType {
     param([string]$Parameter)
     if ($Parameter -in @('RunDownload','IncludeUnmatchedFilesInFederatedModel','NavisworksVisible')) { return 'YesNo' }
@@ -394,7 +410,7 @@ function Get-SettingHelpText {
         IncludeUnmatchedFilesInFederatedModel = 'Choose Yes to add models that do not match the federation naming rules to the final federated NWD.'
         FederationInputFolder = 'Folder used as the source for federation. Leave blank to let the pipeline choose ProcessedFolder or SourceFolder automatically.'
         FederationOutputFolder = 'Folder where grouped NWD files and the final federated model are created.'
-        FederatedFileName = 'Name of the final federated Navisworks model. The .nwd extension is added automatically when omitted.'
+        FederatedFileName = 'Name of the final federated Navisworks model. End it with .nwf to save only the final model as NWF; otherwise .nwd is added automatically when omitted.'
         NavisworksVersion = 'Preferred installed Navisworks version. Leave blank to let the pipeline detect a suitable installed version.'
         NavisworksConfigXML = 'Optional Navisworks XML options file used when creating federated models.'
         NavisworksViewsImportXML = 'Optional XML file containing saved views to import into the final Navisworks model.'
@@ -492,7 +508,8 @@ function Show-SettingsEditor {
     $SettingsPanel.Children.Clear()
     $acquisitionState = Get-FEDAUTOAcquisitionState
     $processSetting = $script:SettingsRows | Where-Object { $_.Parameter -eq 'RunProcess' } | Select-Object -First 1
-    $processEnabled = $processSetting -and $processSetting.Value.ToString().Trim().ToLowerInvariant() -notin @('no','n','false','0','ignore','')
+    $processEnabled = Get-FEDAUTOProcessEnabled
+    Update-FEDAUTOAttributesProcessingColumns
     $federationSetting = $script:SettingsRows | Where-Object { $_.Parameter -eq 'RunFederation' } | Select-Object -First 1
     $federationEnabled = $federationSetting -and $federationSetting.Value.ToString().Trim().ToLowerInvariant() -notin @('no','n','false','0','ignore','')
     $reviztoSetting = $script:SettingsRows | Where-Object { $_.Parameter -eq 'ReviztoPublish' } | Select-Object -First 1
@@ -744,6 +761,9 @@ $AttributesGrid.Add_AutoGeneratingColumn({
         $binding.Mode = [Windows.Data.BindingMode]::TwoWay
         $binding.UpdateSourceTrigger = [Windows.Data.UpdateSourceTrigger]::PropertyChanged
         $column.Binding = $binding
+        if ($eventArgs.PropertyName -eq 'InjectToIFC' -and -not (Get-FEDAUTOProcessEnabled)) {
+            $column.Visibility = [Windows.Visibility]::Collapsed
+        }
         $eventArgs.Column = $column
     }
 })
@@ -812,6 +832,7 @@ $WildcardSelectionGrid.Add_AutoGeneratingColumn({
         $eventArgs.Column.Width = [Windows.Controls.DataGridLength]::new(1, [Windows.Controls.DataGridLengthUnitType]::Star)
     }
     elseif ($eventArgs.PropertyName -eq 'ExportFileName') {
+        $eventArgs.Column.Header = New-Object Windows.Controls.TextBlock -Property @{ Text='ExportFileName'; ToolTip='Use .nwf to save this wildcard output as NWF; otherwise .nwd is used.' }
         $eventArgs.Column.MinWidth = 170
         $eventArgs.Column.Width = [Windows.Controls.DataGridLength]::new(190)
     }
@@ -919,6 +940,7 @@ function Save-FEDAUTOConfiguration {
 function Export-EditorConfigurationToExcel {
     param([Parameter(Mandatory = $true)]$Window)
     Commit-FEDAUTOEditorChanges -Window $Window
+    Ensure-FEDAUTOProcessExecutionPolicy
     Ensure-ModuleAvailable -Name ImportExcel
     Import-Module ImportExcel -ErrorAction Stop
     $dialog = New-Object Microsoft.Win32.SaveFileDialog
