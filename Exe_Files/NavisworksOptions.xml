@@ -1,0 +1,3017 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<exchange xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://download.autodesk.com/us/navisworks/schemas/nw-exchange-12.0.xsd">
+  <optionset name="">
+    <optionset name="general">
+      <optionset name="xml">
+        <option name="validate" flags="32">
+          <data type="bool">true</data>
+        </option>
+      </optionset>
+      <optionset name="undo">
+        <option name="buffer_size" flags="32">
+          <data type="int32">524288</data>
+        </option>
+      </optionset>
+      <optionset name="logging">
+        <option name="log_dir" flags="32">
+          <data type="wstring"></data>
+        </option>
+        <option name="log_file" flags="32">
+          <data type="wstring"></data>
+        </option>
+        <option name="enable_console" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="enable_file" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="enable_bugslayer" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="logging_flags" flags="32">
+          <data type="int32">0</data>
+        </option>
+        <option name="error_report_log" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="error_report_prompt" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="error_report_enable" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="error_report_file" flags="32">
+          <data type="wstring"></data>
+        </option>
+        <option name="error_report_clr" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="winforms_throw" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="error_report_hotkey1" flags="32">
+          <data type="int32">17</data>
+        </option>
+        <option name="error_report_hotkey2" flags="32">
+          <data type="int32">18</data>
+        </option>
+        <option name="error_report_hotkey3" flags="32">
+          <data type="int32">20</data>
+        </option>
+      </optionset>
+      <optionset name="trace">
+        <optionset name="control">
+          <option name="enable_trace" flags="32">
+            <data type="bool">false</data>
+          </option>
+          <option name="trace_level" flags="32">
+            <data type="name">
+              <name internal="TraceLevel:3">4</name>
+            </data>
+          </option>
+        </optionset>
+        <optionset name="output">
+          <option name="level" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="function_name" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="thread_id" flags="32">
+            <data type="bool">false</data>
+          </option>
+          <option name="time_stamp" flags="32">
+            <data type="bool">true</data>
+          </option>
+        </optionset>
+      </optionset>
+      <optionset name="localcache">
+        <option name="enabled" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="temporary_enabled" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="max_size" flags="32">
+          <data type="int32">10240</data>
+        </option>
+        <option name="min_inactive_files" flags="32">
+          <data type="int32">100</data>
+        </option>
+        <option name="empty_on_next_start" flags="32">
+          <data type="bool">false</data>
+        </option>
+      </optionset>
+      <optionset name="file_streaming">
+        <option name="cache_mode" flags="32">
+          <data type="int32">0</data>
+        </option>
+      </optionset>
+      <optionset name="properties">
+        <optionset name="binary_attribute">
+          <option name="max_binary_bytes" flags="32">
+            <data type="int32">16</data>
+          </option>
+        </optionset>
+      </optionset>
+      <optionset name="nwcreate">
+        <option name="ignore_errors" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <optionset name="journaling">
+          <option name="enable" flags="32">
+            <data type="bool">false</data>
+          </option>
+          <option name="format" flags="32">
+            <data type="name">
+              <name internal="LcNwcJournalFormat:1">Binary</name>
+            </data>
+          </option>
+          <option name="use_loaded_filename" flags="32">
+            <data type="bool">false</data>
+          </option>
+          <option name="filename" flags="32">
+            <data type="wstring"></data>
+          </option>
+        </optionset>
+        <optionset name="modeller">
+          <option name="asm_create_sat_files" flags="32">
+            <data type="bool">false</data>
+          </option>
+          <option name="asm_reuse_sat_id" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="asm_enable_conversion_timings" flags="32">
+            <data type="bool">false</data>
+          </option>
+          <option name="asm_conversion_timing_threshold" flags="32">
+            <data type="int32">20</data>
+          </option>
+          <option name="asm_converter_debug" flags="32">
+            <data type="bool">false</data>
+          </option>
+          <option name="asm_converter_sat_debug" flags="32">
+            <data type="bool">false</data>
+          </option>
+        </optionset>
+      </optionset>
+      <optionset name="kernel">
+        <option name="try_fast_merge_nwf" flags="32">
+          <data type="bool">true</data>
+        </option>
+      </optionset>
+      <optionset name="environment">
+        <optionset name="servers">
+          <option name="a360_force_staging" flags="32">
+            <data type="bool">false</data>
+          </option>
+          <option name="glue" flags="32">
+            <data type="name">
+              <name internal="lcodpgluerest_server_name:0">Production</name>
+            </data>
+          </option>
+          <option name="glue_geo" flags="32">
+            <data type="name">
+              <name internal="lcodpgluerest_server_geo:0">United States</name>
+            </data>
+          </option>
+        </optionset>
+        <optionset name="files">
+          <option name="max_mru" flags="32">
+            <data type="int32">10</data>
+          </option>
+          <option name="home_screen_pinned_first" flags="32">
+            <data type="bool">true</data>
+          </option>
+        </optionset>
+        <optionset name="help">
+          <option name="use_staging" flags="32">
+            <data type="bool">false</data>
+          </option>
+        </optionset>
+      </optionset>
+      <optionset name="bim360">
+        <option name="show_ribbon" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <optionset name="flags">
+          <option name="disable_nwf_upload" flags="32">
+            <data type="bool">false</data>
+          </option>
+          <option name="disable_kernel_triggered_preload" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="disable_login_triggered_preload" flags="32">
+            <data type="bool">true</data>
+          </option>
+        </optionset>
+      </optionset>
+      <optionset name="autosave">
+        <option name="enable" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <optionset name="folder_opts">
+          <option name="folder_mode" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="folder" flags="32">
+            <data type="wstring">C:\Users\gudarziang\AppData\Roaming\Autodesk\Navisworks Manage 2026\AutoSave</data>
+          </option>
+          <option name="manage_disk_space" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="mem_limit" flags="32">
+            <data type="int32">512</data>
+          </option>
+        </optionset>
+        <optionset name="frequency">
+          <option name="minutes" flags="32">
+            <data type="int32">15</data>
+          </option>
+        </optionset>
+        <optionset name="history">
+          <option name="size" flags="32">
+            <data type="int32">3</data>
+          </option>
+        </optionset>
+      </optionset>
+    </optionset>
+    <optionset name="interface">
+      <optionset name="disp_units">
+        <option name="linear_format" flags="32">
+          <data type="name">
+            <name internal="RoamerGUI_OptionsUnitsLinearFormat:1">Meters</name>
+          </data>
+        </option>
+        <option name="angular_format" flags="32">
+          <data type="name">
+            <name internal="RoamerGUI_OptionsUnitsAngularFormat:0">Degrees</name>
+          </data>
+        </option>
+        <option name="decimal_places" flags="32">
+          <data type="int32">3</data>
+        </option>
+        <option name="fractional_precision" flags="32">
+          <data type="name">
+            <name internal="LcOaFrationalPrecision:7">1/256</name>
+          </data>
+        </option>
+      </optionset>
+      <optionset name="sectioning">
+        <optionset name="capping">
+          <option name="enabled" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="batching" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="use_outline_colour" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <optionset name="outline_colour">
+            <option name="red" flags="32">
+              <data type="float">1.000000</data>
+            </option>
+            <option name="green" flags="32">
+              <data type="float">0.000000</data>
+            </option>
+            <option name="blue" flags="32">
+              <data type="float">0.000000</data>
+            </option>
+          </optionset>
+        </optionset>
+      </optionset>
+      <optionset name="selection">
+        <option name="pick_radius" flags="32">
+          <data type="int32">1</data>
+        </option>
+        <option name="resolution" flags="32">
+          <data type="name">
+            <name internal="RoamerGUI_PickResolution:4">Last Object</name>
+          </data>
+        </option>
+        <option name="select_box_respect_resolution" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="compact_tree_mode" flags="32">
+          <data type="name">
+            <name internal="RoamerGUI_CompactTreeMode:1">Layers</name>
+          </data>
+        </option>
+        <optionset name="highlight">
+          <option name="enabled" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="method" flags="32">
+            <data type="name">
+              <name internal="RoamerGUI_HighlightMethod:2">Tinted</name>
+            </data>
+          </option>
+          <optionset name="colour">
+            <option name="red" flags="32">
+              <data type="float">0.000000</data>
+            </option>
+            <option name="green" flags="32">
+              <data type="float">0.200000</data>
+            </option>
+            <option name="blue" flags="32">
+              <data type="float">1.000000</data>
+            </option>
+          </optionset>
+          <option name="tint_factor" flags="32">
+            <data type="float">0.750000</data>
+          </option>
+        </optionset>
+      </optionset>
+      <optionset name="measure">
+        <option name="line_thickness" flags="32">
+          <data type="int32">1</data>
+        </option>
+        <optionset name="line_colour">
+          <option name="red" flags="32">
+            <data type="float">1.000000</data>
+          </option>
+          <option name="green" flags="32">
+            <data type="float">0.600000</data>
+          </option>
+          <option name="blue" flags="32">
+            <data type="float">0.000000</data>
+          </option>
+        </optionset>
+        <optionset name="text_colour">
+          <option name="red" flags="32">
+            <data type="float">1.000000</data>
+          </option>
+          <option name="green" flags="32">
+            <data type="float">1.000000</data>
+          </option>
+          <option name="blue" flags="32">
+            <data type="float">1.000000</data>
+          </option>
+        </optionset>
+        <option name="convert_to_redline_colour" flags="32">
+          <data type="name">
+            <name internal="LcOpMeasureToRedlineColour:0">Markup</name>
+          </data>
+        </option>
+        <option name="anchor_style" flags="32">
+          <data type="name">
+            <name internal="LcOpMeasureAnchorStyle:0">Circle</name>
+          </data>
+        </option>
+        <option name="show_measures_in_scene" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="show_xyz_in_scene" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="snap_to_centre_lines" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="shortest_distance_auto_zoom" flags="32">
+          <data type="bool">true</data>
+        </option>
+      </optionset>
+      <optionset name="snapping">
+        <optionset name="picking">
+          <option name="snap_to_vertex" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="snap_to_edge" flags="32">
+            <data type="bool">false</data>
+          </option>
+          <option name="snap_to_line_vertex" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="snap_to_line_middle" flags="32">
+            <data type="bool">false</data>
+          </option>
+          <option name="snap_to_arc_center" flags="32">
+            <data type="bool">false</data>
+          </option>
+          <option name="tolerance" flags="32">
+            <data type="int32">5</data>
+          </option>
+        </optionset>
+        <optionset name="rotation">
+          <option name="angle_mult" flags="32">
+            <data type="angle">0.785398</data>
+          </option>
+          <option name="angle_sensitivity" flags="32">
+            <data type="angle">0.087266</data>
+          </option>
+        </optionset>
+      </optionset>
+      <optionset name="viewpoints">
+        <option name="save_hide_required" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="override_material" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="override_linear_speed" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="default_linear_speed" flags="32">
+          <data type="linear">4.000000</data>
+        </option>
+        <option name="default_angular_speed" flags="32">
+          <data type="angle">0.785398</data>
+        </option>
+        <optionset name="viewer">
+          <option name="collision_detection" flags="32">
+            <data type="bool">false</data>
+          </option>
+          <option name="gravity" flags="32">
+            <data type="bool">false</data>
+          </option>
+          <option name="auto_crouch" flags="32">
+            <data type="bool">false</data>
+          </option>
+          <option name="radius" flags="32">
+            <data type="linear">0.300000</data>
+          </option>
+          <option name="height" flags="32">
+            <data type="linear">1.800000</data>
+          </option>
+          <option name="eye_offset" flags="32">
+            <data type="linear">0.150000</data>
+          </option>
+          <optionset name="third_person">
+            <option name="enabled" flags="32">
+              <data type="bool">false</data>
+            </option>
+            <option name="auto_zoom" flags="32">
+              <data type="bool">true</data>
+            </option>
+            <option name="avatar" flags="32">
+              <data type="string">construction_worker</data>
+            </option>
+            <option name="angle" flags="32">
+              <data type="angle">0.000000</data>
+            </option>
+            <option name="distance" flags="32">
+              <data type="linear">3.000000</data>
+            </option>
+          </optionset>
+        </optionset>
+        <optionset name="report">
+          <option name="image_width" flags="32">
+            <data type="int32">512</data>
+          </option>
+          <option name="image_height" flags="32">
+            <data type="int32">512</data>
+          </option>
+          <option name="image_aa_passes" flags="32">
+            <data type="int32">0</data>
+          </option>
+          <option name="image_plugin" flags="32">
+            <data type="name">
+              <name internal="XmlViewpointsReportExportPlugin:0">JPG</name>
+            </data>
+          </option>
+        </optionset>
+      </optionset>
+      <optionset name="hyperlinks">
+        <option name="enabled" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="display_3d" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="max_icons" flags="32">
+          <data type="int32">25</data>
+        </option>
+        <option name="hide_colliding" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="show_context_menu" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="cull_radius" flags="32">
+          <data type="linear">0.000000</data>
+        </option>
+        <option name="leader_offset_x" flags="32">
+          <data type="int32">0</data>
+        </option>
+        <option name="leader_offset_y" flags="32">
+          <data type="int32">0</data>
+        </option>
+        <option name="font_name" flags="32">
+          <data type="wstring">Tahoma</data>
+        </option>
+        <option name="font_size" flags="32">
+          <data type="int32">10</data>
+        </option>
+        <optionset name="standard">
+          <optionset name="LcOaURLCategoryHyperlink">
+            <option name="category" flags="32">
+              <data type="name">
+                <name internal="LcOaURLCategoryHyperlink">Hyperlink</name>
+              </data>
+            </option>
+            <option name="icon_type" flags="32">
+              <data type="name">
+                <name internal="LcOpHyperlinksIconType:1">Icon</name>
+              </data>
+            </option>
+            <option name="visible" flags="32">
+              <data type="bool">true</data>
+            </option>
+          </optionset>
+          <optionset name="LcOaURLCategoryTag">
+            <option name="category" flags="32">
+              <data type="name">
+                <name internal="LcOaURLCategoryTag">Label</name>
+              </data>
+            </option>
+            <option name="icon_type" flags="32">
+              <data type="name">
+                <name internal="LcOpHyperlinksIconType:0">Text</name>
+              </data>
+            </option>
+            <option name="visible" flags="32">
+              <data type="bool">true</data>
+            </option>
+          </optionset>
+          <optionset name="LcOdpClashCommentPlugin">
+            <option name="category" flags="32">
+              <data type="name">
+                <name internal="LcOdpClashCommentPlugin">Clash Detective</name>
+              </data>
+            </option>
+            <option name="icon_type" flags="32">
+              <data type="name">
+                <name internal="LcOpHyperlinksIconType:1">Icon</name>
+              </data>
+            </option>
+            <option name="visible" flags="32">
+              <data type="bool">true</data>
+            </option>
+            <option name="hide_icons_without_comment" flags="32">
+              <data type="bool">false</data>
+            </option>
+          </optionset>
+          <optionset name="LcRmSelSetCommentPlugin">
+            <option name="category" flags="32">
+              <data type="name">
+                <name internal="LcRmSelSetCommentPlugin">Selection Sets</name>
+              </data>
+            </option>
+            <option name="icon_type" flags="32">
+              <data type="name">
+                <name internal="LcOpHyperlinksIconType:1">Icon</name>
+              </data>
+            </option>
+            <option name="visible" flags="32">
+              <data type="bool">false</data>
+            </option>
+            <option name="hide_icons_without_comment" flags="32">
+              <data type="bool">false</data>
+            </option>
+          </optionset>
+          <optionset name="LcTlCommentPlugin">
+            <option name="category" flags="32">
+              <data type="name">
+                <name internal="LcTlCommentPlugin">TimeLiner</name>
+              </data>
+            </option>
+            <option name="icon_type" flags="32">
+              <data type="name">
+                <name internal="LcOpHyperlinksIconType:1">Icon</name>
+              </data>
+            </option>
+            <option name="visible" flags="32">
+              <data type="bool">true</data>
+            </option>
+            <option name="hide_icons_without_comment" flags="32">
+              <data type="bool">false</data>
+            </option>
+          </optionset>
+          <optionset name="LcOmVPCommentPlugin">
+            <option name="category" flags="32">
+              <data type="name">
+                <name internal="LcOmVPCommentPlugin">Viewpoints</name>
+              </data>
+            </option>
+            <option name="icon_type" flags="32">
+              <data type="name">
+                <name internal="LcOpHyperlinksIconType:1">Icon</name>
+              </data>
+            </option>
+            <option name="visible" flags="32">
+              <data type="bool">true</data>
+            </option>
+            <option name="hide_icons_without_comment" flags="32">
+              <data type="bool">false</data>
+            </option>
+          </optionset>
+          <optionset name="LcRmRedlineTagCommentPlugin">
+            <option name="category" flags="32">
+              <data type="name">
+                <name internal="LcRmRedlineTagCommentPlugin">Markup Tags</name>
+              </data>
+            </option>
+            <option name="icon_type" flags="32">
+              <data type="name">
+                <name internal="LcOpHyperlinksIconType:1">Icon</name>
+              </data>
+            </option>
+            <option name="visible" flags="32">
+              <data type="bool">true</data>
+            </option>
+            <option name="hide_icons_without_comment" flags="32">
+              <data type="bool">false</data>
+            </option>
+          </optionset>
+        </optionset>
+        <optionarray name="user_defined"/>
+      </optionset>
+      <optionset name="smart_tags">
+        <option name="enabled" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="hide_category" flags="32">
+          <data type="bool">false</data>
+        </option>
+      </optionset>
+      <optionset name="redline">
+        <option name="line_width">
+          <data type="int32">3</data>
+        </option>
+        <optionset name="color">
+          <option name="red" flags="32">
+            <data type="float">1.000000</data>
+          </option>
+          <option name="green" flags="32">
+            <data type="float">0.000000</data>
+          </option>
+          <option name="blue" flags="32">
+            <data type="float">0.000000</data>
+          </option>
+        </optionset>
+        <option name="font_name" flags="32">
+          <data type="wstring">Tahoma</data>
+        </option>
+        <option name="font_size" flags="32">
+          <data type="int32">14</data>
+        </option>
+        <option name="small_font_size" flags="32">
+          <data type="int32">12</data>
+        </option>
+      </optionset>
+      <optionset name="reference_views">
+        <optionset name="marker_color">
+          <option name="red" flags="32">
+            <data type="float">1.000000</data>
+          </option>
+          <option name="green" flags="32">
+            <data type="float">1.000000</data>
+          </option>
+          <option name="blue" flags="32">
+            <data type="float">1.000000</data>
+          </option>
+        </optionset>
+      </optionset>
+      <optionset name="display">
+        <optionset name="transparency">
+          <option name="interactive" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="overhead_adjust" flags="32">
+            <data type="bool">false</data>
+          </option>
+          <option name="mode" flags="32">
+            <data type="name">
+              <name internal="LcOaTransparencyMode:2">Delay, Sort and Blend</name>
+            </data>
+          </option>
+        </optionset>
+        <optionset name="2d_graphics">
+          <option name="lod" flags="32">
+            <data type="name">
+              <name internal="LcPlotTesselatorLod:1">Medium</name>
+            </data>
+          </option>
+          <option name="rendering" flags="32">
+            <data type="name">
+              <name internal="LcPlotRendering:0">Fixed</name>
+            </data>
+          </option>
+        </optionset>
+        <optionset name="detail">
+          <option name="guarantee_frame_rate" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="fill_in_detail" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="disabled_detail" flags="32">
+            <data type="bool">false</data>
+          </option>
+          <option name="move_detail" flags="32">
+            <data type="bool">false</data>
+          </option>
+          <option name="inactive_detail" flags="32">
+            <data type="bool">true</data>
+          </option>
+        </optionset>
+        <optionset name="primitives">
+          <option name="point_size" flags="32">
+            <data type="int32">1</data>
+          </option>
+          <option name="line_size" flags="32">
+            <data type="int32">1</data>
+          </option>
+          <option name="snap_size" flags="32">
+            <data type="int32">1</data>
+          </option>
+          <option name="enable_parametric_prims" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="use_display_lists" flags="32">
+            <data type="bool">true</data>
+          </option>
+        </optionset>
+        <optionset name="hud">
+          <option name="xyz_triad" flags="32">
+            <data type="bool">false</data>
+          </option>
+          <option name="show_position" flags="32">
+            <data type="bool">false</data>
+          </option>
+          <option name="show_grid_location" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="show_rapidrt_status" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="show_renderer_name" flags="32">
+            <data type="bool">false</data>
+          </option>
+          <option name="show_camera_clip" flags="32">
+            <data type="bool">false</data>
+          </option>
+          <option name="show_stats" flags="32">
+            <data type="bool">false</data>
+          </option>
+          <option name="time_graph" flags="32">
+            <data type="bool">false</data>
+          </option>
+          <option name="tris_graph" flags="32">
+            <data type="bool">false</data>
+          </option>
+          <option name="tri_rate_graph" flags="32">
+            <data type="bool">false</data>
+          </option>
+          <option name="mem_usage_graph" flags="32">
+            <data type="bool">false</data>
+          </option>
+          <option name="show_rapidrt_detail_status" flags="32">
+            <data type="bool">false</data>
+          </option>
+          <option name="font_name" flags="32">
+            <data type="wstring">Tahoma</data>
+          </option>
+          <option name="font_size" flags="32">
+            <data type="int32">10</data>
+          </option>
+        </optionset>
+        <option name="stress_scaling" flags="32">
+          <data type="float">1.000000</data>
+        </option>
+        <optionset name="autodesk">
+          <optionset name="effects">
+            <option name="shader_style" flags="32">
+              <data type="name">
+                <name internal="OGSShaderStyle:0">Basic</name>
+              </data>
+            </option>
+            <option name="ssao" flags="32">
+              <data type="bool">false</data>
+            </option>
+            <option name="unlimited_light" flags="32">
+              <data type="bool">true</data>
+            </option>
+            <option name="hard_limit_light_enable" flags="32">
+              <data type="bool">true</data>
+            </option>
+            <option name="hard_limit_light_number" flags="32">
+              <data type="int32">24</data>
+            </option>
+          </optionset>
+          <optionset name="ssao_inputs">
+            <option name="ssao_passes" flags="32">
+              <data type="name">
+                <name internal="ssao_pass_enum:1">2</name>
+              </data>
+            </option>
+            <option name="sample_count" flags="32">
+              <data type="int32">16</data>
+            </option>
+            <option name="sample_radius" flags="32">
+              <data type="float">0.100000</data>
+            </option>
+            <option name="world_space_sample_radius" flags="32">
+              <data type="bool">false</data>
+            </option>
+            <option name="blur_amount" flags="32">
+              <data type="int32">3</data>
+            </option>
+            <option name="blur_double" flags="32">
+              <data type="bool">true</data>
+            </option>
+            <option name="composite_factor" flags="32">
+              <data type="float">2.000000</data>
+            </option>
+            <optionset name="composite_color">
+              <option name="red" flags="32">
+                <data type="float">0.000000</data>
+              </option>
+              <option name="green" flags="32">
+                <data type="float">0.000000</data>
+              </option>
+              <option name="blue" flags="32">
+                <data type="float">0.000000</data>
+              </option>
+            </optionset>
+          </optionset>
+          <optionset name="msaa">
+            <option name="level" flags="32">
+              <data type="name">
+                <name internal="OGSMSAA:0">Off</name>
+              </data>
+            </option>
+          </optionset>
+          <option name="adaptive_quality_degradation" flags="32">
+            <data type="bool">false</data>
+          </option>
+          <optionset name="enabled">
+            <option name="usefallback" flags="32">
+              <data type="bool">false</data>
+            </option>
+            <option name="uselodtexture" flags="32">
+              <data type="bool">false</data>
+            </option>
+            <option name="reflectionenabled" flags="32">
+              <data type="bool">true</data>
+            </option>
+            <option name="highlightenabled" flags="32">
+              <data type="bool">true</data>
+            </option>
+            <option name="bumpenabled" flags="32">
+              <data type="bool">true</data>
+            </option>
+            <option name="textureresolution" flags="32">
+              <data type="name">
+                <name internal="FBXTranslatorTextureResolution:0">Base Resolution</name>
+              </data>
+            </option>
+            <option name="maxtexturedimension" flags="32">
+              <data type="name">
+                <name internal="FBXTranslatorMaxTextureDimension:6">1024</name>
+              </data>
+            </option>
+            <option name="proceduraltexturesize" flags="32">
+              <data type="name">
+                <name internal="FBXTranslatorProceduralTextureSize:5">512</name>
+              </data>
+            </option>
+          </optionset>
+          <option name="fast_render" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="fast_consolidate" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="static_buffers" flags="32">
+            <data type="bool">true</data>
+          </option>
+        </optionset>
+        <optionset name="opengl">
+          <optionset name="features">
+            <option name="force_clear" flags="32">
+              <data type="bool">false</data>
+            </option>
+            <option name="near_clip_offset" flags="32">
+              <data type="int32">-1</data>
+            </option>
+            <option name="feature_bits" flags="32">
+              <data type="int32">-1</data>
+            </option>
+            <option name="disable_extensions" flags="32">
+              <data type="bool">false</data>
+            </option>
+            <option name="disable_lock_arrays" flags="32">
+              <data type="bool">false</data>
+            </option>
+            <option name="enable_lock_arrays" flags="32">
+              <data type="bool">false</data>
+            </option>
+            <option name="disable_multi_texture" flags="32">
+              <data type="bool">false</data>
+            </option>
+            <option name="disable_occlusion_queries" flags="32">
+              <data type="bool">false</data>
+            </option>
+            <option name="disable_vertex_buffer_objects" flags="32">
+              <data type="bool">false</data>
+            </option>
+            <option name="use_byte_colors" flags="32">
+              <data type="bool">true</data>
+            </option>
+            <option name="use_short_normals" flags="32">
+              <data type="bool">true</data>
+            </option>
+          </optionset>
+          <optionset name="window">
+            <option name="pixel_format" flags="32">
+              <data type="int32">0</data>
+            </option>
+            <option name="color" flags="32">
+              <data type="name">
+                <name internal="LcOmGLWndColorMode:5">Best Quality</name>
+              </data>
+            </option>
+            <option name="depth" flags="32">
+              <data type="name">
+                <name internal="LcOmGLWndDepthMode:6">Best Quality</name>
+              </data>
+            </option>
+          </optionset>
+          <optionset name="extensions">
+            <option name="use_wgl_extensions" flags="32">
+              <data type="bool">true</data>
+            </option>
+          </optionset>
+        </optionset>
+        <option name="always_render" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <optionset name="graphics">
+          <option name="hw_accel" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="wpf_hw_accel" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="system2" flags="32">
+            <data type="name">
+              <name internal="LcOwGraphicsSystem:1">Autodesk</name>
+            </data>
+          </option>
+          <option name="sw_occlusion_culling" flags="32">
+            <data type="bool">true</data>
+          </option>
+        </optionset>
+        <optionset name="drivers">
+          <optionset name="enabled">
+            <option name="d3d11_ogs" flags="32">
+              <data type="bool">true</data>
+            </option>
+            <option name="software_d3d11_ogs" flags="32">
+              <data type="bool">true</data>
+            </option>
+            <option name="hardware_opengl" flags="32">
+              <data type="bool">true</data>
+            </option>
+            <option name="software_opengl" flags="32">
+              <data type="bool">true</data>
+            </option>
+          </optionset>
+        </optionset>
+      </optionset>
+      <optionset name="append_merge">
+        <optionset name="options">
+          <option name="mode" flags="32">
+            <data type="int32">1</data>
+          </option>
+        </optionset>
+      </optionset>
+      <optionset name="developer">
+        <option name="show_properties" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="show_property_internal_names" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="patchwork_mode" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <optionset name="api">
+          <option name="runaction_verbose" flags="32">
+            <data type="bool">false</data>
+          </option>
+          <option name="managed_debug_break" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="native_debug_break" flags="32">
+            <data type="bool">true</data>
+          </option>
+        </optionset>
+        <option name="graphs" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="stats" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="speed_bench" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="speed_time" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="display_status" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="timing_status_panes" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="show_internal_option_names" flags="32">
+          <data type="name">
+            <name internal="RoamerGUI_ShowNames:0">User names</name>
+          </data>
+        </option>
+      </optionset>
+      <optionset name="userinterface">
+        <option name="theme_type" flags="32">
+          <data type="name">
+            <name internal="RoamerGUI_AIRLookThemeType:0">Dark</name>
+          </data>
+        </option>
+        <option name="enable_ui_scaling" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="show_app_home_on_startup" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="infocenter_enable" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <optionset name="tooltips">
+          <option name="enabled" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="show_delay" flags="32">
+            <data type="int32">0</data>
+          </option>
+          <option name="show_duration" flags="32">
+            <data type="int32">0</data>
+          </option>
+          <option name="show_shortcuts" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="extended_content" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="extended_delay" flags="32">
+            <data type="int32">0</data>
+          </option>
+          <option name="view_show_duration" flags="32">
+            <data type="int32">0</data>
+          </option>
+        </optionset>
+      </optionset>
+      <optionset name="automation">
+        <option name="enable_busy_dialog" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="enable_not_responding_dialog" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="not_responding_timeout_secs" flags="32">
+          <data type="int32">30</data>
+        </option>
+      </optionset>
+      <optionset name="selection_tree">
+        <option name="tab_on_current_selection" flags="32">
+          <data type="bool">false</data>
+        </option>
+      </optionset>
+      <optionset name="grids">
+        <option name="enabled" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <optionset name="colour_group">
+          <optionset name="above_colour">
+            <option name="red" flags="32">
+              <data type="float">1.000000</data>
+            </option>
+            <option name="green" flags="32">
+              <data type="float">0.000000</data>
+            </option>
+            <option name="blue" flags="32">
+              <data type="float">0.000000</data>
+            </option>
+          </optionset>
+          <optionset name="below_colour">
+            <option name="red" flags="32">
+              <data type="float">0.000000</data>
+            </option>
+            <option name="green" flags="32">
+              <data type="float">1.000000</data>
+            </option>
+            <option name="blue" flags="32">
+              <data type="float">0.000000</data>
+            </option>
+          </optionset>
+          <optionset name="other_colour">
+            <option name="red" flags="32">
+              <data type="float">0.800000</data>
+            </option>
+            <option name="green" flags="32">
+              <data type="float">0.800000</data>
+            </option>
+            <option name="blue" flags="32">
+              <data type="float">0.800000</data>
+            </option>
+          </optionset>
+        </optionset>
+        <option name="label_font_size" flags="32">
+          <data type="int32">12</data>
+        </option>
+        <option name="xray" flags="32">
+          <data type="bool">true</data>
+        </option>
+      </optionset>
+      <optionset name="alignments">
+        <option name="enabled" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="station_char" flags="32">
+          <data type="name">
+            <name internal="LcOpCivilAlignmentStationCharacter:1">+</name>
+          </data>
+        </option>
+        <optionset name="label_color">
+          <option name="red" flags="32">
+            <data type="float">1.000000</data>
+          </option>
+          <option name="green" flags="32">
+            <data type="float">0.600000</data>
+          </option>
+          <option name="blue" flags="32">
+            <data type="float">0.000000</data>
+          </option>
+        </optionset>
+        <optionset name="line_color">
+          <option name="red" flags="32">
+            <data type="float">1.000000</data>
+          </option>
+          <option name="green" flags="32">
+            <data type="float">0.600000</data>
+          </option>
+          <option name="blue" flags="32">
+            <data type="float">0.000000</data>
+          </option>
+        </optionset>
+      </optionset>
+      <optionset name="first_run">
+        <option name="show_help">
+          <data type="bool">false</data>
+        </option>
+      </optionset>
+      <optionset name="space_mouse">
+        <optionset name="speed">
+          <option name="speed" flags="32">
+            <data type="float">200.000000</data>
+          </option>
+        </optionset>
+        <optionset name="object_mode">
+          <option name="keep_scene_upright" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="center_pivot_on_selection" flags="32">
+            <data type="bool">true</data>
+          </option>
+        </optionset>
+        <optionset name="motion_filter">
+          <option name="pan_zoom" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="tilt_spin_roll" flags="32">
+            <data type="bool">true</data>
+          </option>
+        </optionset>
+        <option name="visible" flags="32">
+          <data type="bool">true</data>
+        </option>
+      </optionset>
+      <optionset name="nav_bar">
+        <optionset name="orbit_tools">
+          <option name="classic_orbit" flags="32">
+            <data type="bool">false</data>
+          </option>
+          <option name="classic_free_orbit" flags="32">
+            <data type="bool">false</data>
+          </option>
+          <option name="classic_constrained_orbit" flags="32">
+            <data type="bool">false</data>
+          </option>
+        </optionset>
+        <optionset name="walk_tool">
+          <option name="classic_walk" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="constrain_walk_angle" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="use_linear_speed" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="walk_speed" flags="32">
+            <data type="float">1.000000</data>
+          </option>
+        </optionset>
+        <option name="visible" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <optionset name="location">
+          <option name="position" flags="32">
+            <data type="name">
+              <name internal="lcautocam_navbar_location:0">Linked to ViewCube</name>
+            </data>
+          </option>
+          <option name="location_offsetx" flags="32">
+            <data type="int32">0</data>
+          </option>
+          <option name="location_offsety" flags="32">
+            <data type="int32">0</data>
+          </option>
+          <option name="position_2d" flags="32">
+            <data type="name">
+              <name internal="lcautocam_navbar_location:0">Linked to ViewCube</name>
+            </data>
+          </option>
+          <option name="location_offsetx_2d" flags="32">
+            <data type="int32">0</data>
+          </option>
+          <option name="location_offsety_2d" flags="32">
+            <data type="int32">0</data>
+          </option>
+        </optionset>
+        <optionset name="items">
+          <option name="view_cube" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="steering_wheels" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="steering_wheels_2d" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="pan" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="pan_2d" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="zoom" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="zoom_2d" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="orbit" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="look" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="walk_fly" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="spacemouse" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="spacemouse_2d" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="select" flags="32">
+            <data type="bool">true</data>
+          </option>
+        </optionset>
+        <optionset name="zoom_tool">
+          <option name="reverse_direction" flags="32">
+            <data type="bool">false</data>
+          </option>
+        </optionset>
+      </optionset>
+      <optionset name="view_cube">
+        <option name="show" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="location" flags="32">
+          <data type="name">
+            <name internal="lcautocam_view_cube_location:0">Top Right</name>
+          </data>
+        </option>
+        <option name="size" flags="32">
+          <data type="name">
+            <name internal="lcautocam_view_cube_size:0">Automatic</name>
+          </data>
+        </option>
+        <option name="opacity" flags="32">
+          <data type="name">
+            <name internal="lcautocam_view_cube_opacity:1">25%</name>
+          </data>
+        </option>
+        <option name="keep_upright" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <optionset name="when_drag">
+          <option name="snap_to_view" flags="32">
+            <data type="bool">true</data>
+          </option>
+        </optionset>
+        <optionset name="when_click">
+          <option name="fit_to_view" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="use_animated_transitions" flags="32">
+            <data type="bool">true</data>
+          </option>
+        </optionset>
+        <option name="show_compass" flags="32">
+          <data type="bool">true</data>
+        </option>
+      </optionset>
+      <optionset name="steering_wheel">
+        <optionset name="wheels">
+          <optionset name="big">
+            <option name="size" flags="32">
+              <data type="name">
+                <name internal="lcautocam_big_wheel_size:1">Normal</name>
+              </data>
+            </option>
+            <option name="opacity" flags="32">
+              <data type="name">
+                <name internal="lcautocam_wheel_opacity:1">50%</name>
+              </data>
+            </option>
+          </optionset>
+          <optionset name="mini">
+            <option name="size" flags="32">
+              <data type="name">
+                <name internal="lcautocam_mini_wheel_size:1">Normal</name>
+              </data>
+            </option>
+            <option name="opacity" flags="32">
+              <data type="name">
+                <name internal="lcautocam_wheel_opacity:1">50%</name>
+              </data>
+            </option>
+          </optionset>
+        </optionset>
+        <option name="active_wheel_type" flags="32">
+          <data type="int32">2</data>
+        </option>
+        <optionset name="mini_wheel_messages">
+          <option name="show_tool_messages" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="show_tooltips" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="show_tool_cursor" flags="32">
+            <data type="bool">true</data>
+          </option>
+        </optionset>
+        <optionset name="look_tool">
+          <option name="invert_vertical_axis" flags="32">
+            <data type="bool">false</data>
+          </option>
+        </optionset>
+        <optionset name="walk_tool">
+          <option name="constrain_walk_angle" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="use_linear_speed" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="walk_speed" flags="32">
+            <data type="float">1.000000</data>
+          </option>
+        </optionset>
+        <optionset name="zoom_tool">
+          <option name="enable_single_zoom_in" flags="32">
+            <data type="bool">false</data>
+          </option>
+        </optionset>
+        <optionset name="orbit_tool">
+          <option name="keep_scene_upright" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="enable_selection_sensitivity" flags="32">
+            <data type="bool">true</data>
+          </option>
+        </optionset>
+      </optionset>
+      <optionset name="progress">
+        <option name="enable" flags="32">
+          <data type="bool">true</data>
+        </option>
+      </optionset>
+    </optionset>
+    <optionset name="model">
+      <optionset name="performance">
+        <optionset name="merge">
+          <option name="on_convert" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="on_append" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="on_load_nwf" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="on_save" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="regenerate_checksums" flags="32">
+            <data type="bool">false</data>
+          </option>
+          <option name="materials" flags="32">
+            <data type="bool">true</data>
+          </option>
+        </optionset>
+        <optionset name="load">
+          <option name="collapse" flags="32">
+            <data type="name">
+              <name internal="LcOaCollapseType:1">Composite Objects</name>
+            </data>
+          </option>
+          <option name="close" flags="32">
+            <data type="bool">false</data>
+          </option>
+          <option name="create_parametric_prims" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="optimise_on_load" flags="32">
+            <data type="bool">false</data>
+          </option>
+        </optionset>
+        <optionset name="memory">
+          <option name="auto_limit" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="mem_limit" flags="32">
+            <data type="int32">0</data>
+          </option>
+          <option name="mem_limit_in_megabytes" flags="32">
+            <data type="int32">-1</data>
+          </option>
+          <option name="test_absolute" flags="32">
+            <data type="bool">false</data>
+          </option>
+          <option name="alloc_status_pane" flags="32">
+            <data type="bool">false</data>
+          </option>
+          <option name="usage_status_pane" flags="32">
+            <data type="bool">true</data>
+          </option>
+        </optionset>
+        <optionset name="temp_file">
+          <option name="auto" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="location" flags="32">
+            <data type="wstring">%TEMP%</data>
+          </option>
+        </optionset>
+        <optionset name="timing">
+          <option name="allow_performance_counter_timing" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="prefer_performance_counter_timing" flags="32">
+            <data type="bool">false</data>
+          </option>
+        </optionset>
+        <option name="split_threshold" flags="32">
+          <data type="int32">500</data>
+        </option>
+        <option name="spatial_split_threshold" flags="32">
+          <data type="int32">1500</data>
+        </option>
+        <option name="merge_threshold" flags="32">
+          <data type="int32">250</data>
+        </option>
+        <option name="always_use_indexed_tristrips" flags="32">
+          <data type="bool">false</data>
+        </option>
+      </optionset>
+      <optionset name="nwd">
+        <optionset name="compression">
+          <option name="enable" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="flags" flags="32">
+            <data type="int32">63</data>
+          </option>
+          <optionset name="reduce">
+            <option name="coordinates" flags="32">
+              <data type="bool">false</data>
+            </option>
+            <option name="coordinates_precision" flags="32">
+              <data type="linear">0.001000</data>
+            </option>
+            <option name="normals" flags="32">
+              <data type="bool">true</data>
+            </option>
+            <option name="normal_bits" flags="32">
+              <data type="int32">8</data>
+            </option>
+            <option name="colors" flags="32">
+              <data type="bool">true</data>
+            </option>
+            <option name="color_bits" flags="32">
+              <data type="int32">8</data>
+            </option>
+            <option name="texture_coordinates" flags="32">
+              <data type="bool">true</data>
+            </option>
+            <option name="texture_coordinate_bits" flags="32">
+              <data type="int32">8</data>
+            </option>
+          </optionset>
+          <option name="use_zlib" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="pageable" flags="32">
+            <data type="bool">true</data>
+          </option>
+        </optionset>
+        <option name="use_single_geom_stream" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="use_huffman_only" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="use_geom_dict" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="disable_paged_read" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="default_format" flags="32">
+          <data type="name">
+            <name internal="lcop_nwd_version:0">2026</name>
+          </data>
+        </option>
+      </optionset>
+      <optionset name="nwc">
+        <optionset name="compression">
+          <option name="enable" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="flags" flags="32">
+            <data type="int32">63</data>
+          </option>
+          <optionset name="reduce">
+            <option name="coordinates" flags="32">
+              <data type="bool">false</data>
+            </option>
+            <option name="coordinates_precision" flags="32">
+              <data type="linear">0.001000</data>
+            </option>
+            <option name="normals" flags="32">
+              <data type="bool">false</data>
+            </option>
+            <option name="normal_bits" flags="32">
+              <data type="int32">8</data>
+            </option>
+            <option name="colors" flags="32">
+              <data type="bool">false</data>
+            </option>
+            <option name="color_bits" flags="32">
+              <data type="int32">8</data>
+            </option>
+            <option name="texture_coordinates" flags="32">
+              <data type="bool">false</data>
+            </option>
+            <option name="texture_coordinate_bits" flags="32">
+              <data type="int32">8</data>
+            </option>
+          </optionset>
+          <option name="use_zlib" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="pageable" flags="32">
+            <data type="bool">true</data>
+          </option>
+        </optionset>
+        <optionset name="caching">
+          <option name="read_enable" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="write_enable" flags="32">
+            <data type="bool">true</data>
+          </option>
+        </optionset>
+      </optionset>
+    </optionset>
+    <optionset name="file_readers">
+      <optionset name="lcodp3ds0">
+        <option name="lcodp3ds0_param_convert_hidden" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="lcodp3ds0_param_bitmap_file_search_paths" flags="32">
+          <data type="wstring"></data>
+        </option>
+        <option name="lcodp3ds0_default_units" flags="32">
+          <data type="name">
+            <name internal="LcOaUnitLinearEnum:4">Inches</name>
+          </data>
+        </option>
+      </optionset>
+      <optionset name="LcOdPdsDriLoaderPlugin">
+        <option name="lcodpds_dri_load_tags" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="lcodpds_dri_load_dsts" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="lcodpds_dri_input_files" flags="32">
+          <data type="name">
+            <name internal="lcodpds_dri_input_files_enum:0">DGN files</name>
+          </data>
+        </option>
+      </optionset>
+      <optionset name="lcodpldsvf0">
+        <option name="lcodpldsvf_load_textures" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="lcodpldsvf_generate_guids" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="lcodpldsvf_convert_properties" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="lcodpldsvf_convert_hidden_properties" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="lcodpldsvf_disable_new_paging_system" flags="32">
+          <data type="bool">false</data>
+        </option>
+      </optionset>
+      <optionset name="LcNwcLoaderPlugin:lcldasciiscan">
+        <option name="lcldasciiscan_param_sample_rate" flags="32">
+          <data type="int32">4</data>
+        </option>
+        <option name="lcldasciiscan_param_intensity" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="lcldasciiscan_param_color" flags="32">
+          <data type="bool">false</data>
+        </option>
+      </optionset>
+      <optionset name="LcNwcLoaderPlugin:lcldcis2">
+        <option name="faceting_factor" flags="32">
+          <data type="float">1.000000</data>
+        </option>
+        <option name="max_facet_deviation" flags="32">
+          <data type="linear">0.000000</data>
+        </option>
+        <option name="convert_features" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="rect_for_unknown_sections" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="detailed_results" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="large_file_size_threshold" flags="32">
+          <data type="float">36.000000</data>
+        </option>
+      </optionset>
+      <optionset name="LcNwcLoaderPlugin:lclddgn">
+        <option name="lclddgn_param_faceting_factor" flags="32">
+          <data type="float">1.000000</data>
+        </option>
+        <option name="lclddgn_param_max_facet_deviation" flags="32">
+          <data type="linear">0.000000</data>
+        </option>
+        <option name="lclddgn_param_convert_hidden_items" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="lclddgn_param_show_hidden_items" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="lclddgn_param_load_lines" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="lclddgn_param_merge_lines" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="lclddgn_param_split_lines" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="lclddgn_param_load_text" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="lclddgn_param_default_font" flags="32">
+          <data type="wstring">Courier New</data>
+        </option>
+        <option name="lclddgn_param_shape_merge_threshold" flags="32">
+          <data type="int32">4</data>
+        </option>
+        <option name="lclddgn_param_load_references" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="lclddgn_param_ignore_unres_refs" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="lclddgn_param_align_global_origins" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="lclddgn_param_use_level_symbology" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="lclddgn_param_use_materials" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="lclddgn_param_material_search_paths" flags="32">
+          <data type="wstring">C:\Bentley\Workspace\system\materials;C:\Program Files\Bentley\Workspace\system\materials;C:\Program Files\Bentley\Workspace\standards\materials</data>
+        </option>
+        <option name="lclddgn_param_convert_pds" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="lclddgn_param_convert_tricad" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="lclddgn_param_convert_triforma" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="lclddgn_param_triforma_catalogs_search_path" flags="32">
+          <data type="wstring">C:\Bentley\Workspace\triforma\refdata\english\dataset;C:\Bentley\Workspace\triforma\refdata\metric\dataset;C:\Program Files\Bentley\Workspace\TriForma\tf_imperial;C:\Program Files\Bentley\Workspace\TriForma\tf_si</data>
+        </option>
+        <option name="lclddgn_param_view_number" flags="32">
+          <data type="int32">0</data>
+        </option>
+        <option name="lclddgn_param_which_model" flags="32">
+          <data type="name">
+            <name internal="lclddgn_which_model:0">Last Active</name>
+          </data>
+        </option>
+        <option name="lclddgn_param_load_via_atf">
+          <data type="bool">true</data>
+        </option>
+      </optionset>
+      <optionset name="LcNwcLoaderPlugin:lclddwf">
+        <option name="lclddwf_param_faceting_factor" flags="32">
+          <data type="float">1.000000</data>
+        </option>
+        <option name="lclddwf_param_max_facet_deviation" flags="32">
+          <data type="linear">0.000000</data>
+        </option>
+      </optionset>
+      <optionset name="LcNwcLoaderPlugin:lclddwg">
+        <option name="faceting_factor" flags="32">
+          <data type="float">1.000000</data>
+        </option>
+        <option name="max_facet_deviation" flags="32">
+          <data type="float">0.000000</data>
+        </option>
+        <option name="split_by_color" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="def_dec_units" flags="32">
+          <data type="name">
+            <name internal="LcOaUnitLinearEnum:2">Millimeters</name>
+          </data>
+        </option>
+        <option name="merge_faces" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="line_processing" flags="32">
+          <data type="name">
+            <name internal="lclddwg_line_processing:1">Merge Lines By Color</name>
+          </data>
+        </option>
+        <option name="convert_hidden_objects" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="convert_off_layers" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="convert_frozen_layers" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="convert_entity_handles" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="convert_groups" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="convert_xref_attachments" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="convert_xref_overlays" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="merge_xref_layers" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="convert_views" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="convert_points" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="convert_lines" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="convert_snap_points" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="convert_text" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="convert_leaders" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="default_font" flags="32">
+          <data type="wstring">Courier New</data>
+        </option>
+        <option name="convert_point_cloud" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="point_cloud_detail" flags="32">
+          <data type="int32">100</data>
+        </option>
+        <option name="point_cloud_colors" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="use_standard_disp_cfg_adt" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="convert_adt_space_objects" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="material_search_paths" flags="32">
+          <data type="wstring"></data>
+        </option>
+        <option name="render_setting" flags="32">
+          <data type="name">
+            <name internal="lclddwg_render_type:0">Automatic</name>
+          </data>
+        </option>
+        <optionset name="advanced">
+          <option name="LcAcDbxAutoCadProperty" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="LcAcADT" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="LcAcCivil3D" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="LcAcBSLink" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="LcAcRebis" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="LcAcCADPipe" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="LcAcCADWorx" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="LcAcElcoCad" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="LcAcMultiSteel" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="LcAcRevit" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="LcAcZiggurat" flags="32">
+            <data type="bool">true</data>
+          </option>
+        </optionset>
+        <option name="convert_autodesk_material" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="perform_extra_smoothing" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="explicitly_load_dbx_modules" flags="32">
+          <data type="bool">false</data>
+        </option>
+      </optionset>
+      <optionset name="LcNwcLoaderPlugin:lcldfbx">
+        <option name="convert_skeleton" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="convert_light" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="convert_autodesk_materials" flags="32">
+          <data type="bool">true</data>
+        </option>
+      </optionset>
+      <optionset name="LcNwcLoaderPlugin:lcldifc">
+        <option name="load_method" flags="32">
+          <data type="name">
+            <name internal="lcldifc_load_method:3">v4</name>
+          </data>
+        </option>
+        <option name="level_of_details" flags="32">
+          <data type="name">
+            <name internal="lcldifc_rep_lod:1">Show Highest</name>
+          </data>
+        </option>
+        <option name="max_facet_deviation" flags="32">
+          <data type="linear">0.000000</data>
+        </option>
+        <option name="show_spatial_hierarchy" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="use_property_based_colours" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="convert_spaces" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="detailed_results" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="disable_csg" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="large_file_size_threshold" flags="32">
+          <data type="float">36.000000</data>
+        </option>
+        <option name="faceting_factor" flags="32">
+          <data type="float">1.000000</data>
+        </option>
+        <option name="convert_bounding_boxes" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="convert_axes" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="create_sets" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="convert_spaces_rce" flags="32">
+          <data type="name">
+            <name internal="lcldifc_hidden_objects:0">Hide</name>
+          </data>
+        </option>
+        <option name="convert_openings" flags="32">
+          <data type="name">
+            <name internal="lcldifc_hidden_objects:0">Hide</name>
+          </data>
+        </option>
+        <option name="convert_storeys" flags="32">
+          <data type="name">
+            <name internal="lcldifc_hidden_objects:0">Hide</name>
+          </data>
+        </option>
+        <option name="shared_coords">
+          <data type="bool">false</data>
+        </option>
+        <option name="with_true_north" flags="32">
+          <data type="bool">false</data>
+        </option>
+      </optionset>
+      <optionset name="LcNwcLoaderPlugin:lcldinv">
+        <option name="lcldinv_project" flags="32">
+          <data type="wstring"></data>
+        </option>
+        <option name="lcldinv_convert_work_surfaces" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="lcldinv_load_with_lod" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="lcldinv_express_mode" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="lcldinv_convert_autodesk_materials" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="lcldinv_convert_point_cloud" flags="32">
+          <data type="bool">true</data>
+        </option>
+      </optionset>
+      <optionset name="LcNwcLoaderPlugin:lcldjtopen">
+        <option name="lcldjtopenatf_brep" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="lcldjtopenatf_use_y_as_world_up" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="lcldjtopenatf_lod_mode" flags="32">
+          <data type="name">
+            <name internal="lcldjtopenatf_lod_enum:0">High</name>
+          </data>
+        </option>
+      </optionset>
+      <optionset name="LcNwcLoaderPlugin:lcldleica">
+        <option name="lcldleica_param_sample_rate" flags="32">
+          <data type="int32">4</data>
+        </option>
+        <option name="lcldleica_param_point_color" flags="32">
+          <data type="name">
+            <name internal="lcldleica_EPointColor:0">None</name>
+          </data>
+        </option>
+        <option name="lcldleica_param_gamma_correction" flags="32">
+          <data type="float">0.450000</data>
+        </option>
+      </optionset>
+      <optionset name="LcNwcLoaderPlugin:lcldobj">
+        <option name="use_y_as_world_up" flags="32">
+          <data type="bool">true</data>
+        </option>
+      </optionset>
+      <optionset name="LcNwcLoaderPlugin:lcldpdf">
+        <option name="lcldpdf_param_dpi_setting" flags="32">
+          <data type="int32">300</data>
+        </option>
+      </optionset>
+      <optionset name="LcNwcLoaderPlugin:lcldrc">
+        <option name="lcldrc_convert_mode" flags="32">
+          <data type="name">
+            <name internal="lcldrc_convert_enum:2">Voxels</name>
+          </data>
+        </option>
+        <option name="lcldrc_max_interactive_points" flags="32">
+          <data type="int32">500000</data>
+        </option>
+        <option name="lcldrc_max_memory_mb" flags="32">
+          <data type="int32">0</data>
+        </option>
+        <option name="lcldrc_point_cloud_density_percent" flags="32">
+          <data type="int32">100</data>
+        </option>
+        <option name="lcldrc_average_distance" flags="32">
+          <data type="linear">0.000000</data>
+        </option>
+        <option name="lcldrc_scale_interactive_point_size" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="lcldrc_interactive_point_size" flags="32">
+          <data type="int32">8</data>
+        </option>
+        <option name="lcldrc_use_lighting" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="lcldrc_publish_embed_mode" flags="32">
+          <data type="name">
+            <name internal="lcldrc_publish_embed_enum:1">Fast Access</name>
+          </data>
+        </option>
+      </optionset>
+      <optionset name="LcNwcLoaderPlugin:lcldrevit">
+        <option name="export_element_params" flags="32">
+          <data type="name">
+            <name internal="lcldrevit_export_element_params:2">All</name>
+          </data>
+        </option>
+        <option name="export_element_ids" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="find_missing_materials" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="use_shared_coordinates" flags="32">
+          <data type="name">
+            <name internal="lcldrevit_use_shared_coordinates:1">Shared</name>
+          </data>
+        </option>
+        <option name="export_element_generic_properties" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="export_lights" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="export_urls" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="export_linked_files" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="export_linked_cad_formats" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="export_construction_parts" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="divide_file_into_levels" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="export_room_geometry" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="export_room_attribute" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="embed_textures" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="with_type_props" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="separate_custom_props" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="strict_sectioning" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="extract_section" flags="32">
+          <data type="name">
+            <name internal="lcldrevit_extract_section:0">Navisworks view</name>
+          </data>
+        </option>
+        <option name="faceting_factor" flags="32">
+          <data type="float">1.000000</data>
+        </option>
+      </optionset>
+      <optionset name="LcNwcLoaderPlugin:lcldrvm">
+        <option name="lcldrvm_facet_factor" flags="32">
+          <data type="float">1.000000</data>
+        </option>
+        <option name="lcldrvm_param_max_facet_deviation" flags="32">
+          <data type="linear">0.000000</data>
+        </option>
+        <option name="lcldrvm_convert_attributes" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="lcldrvm_default_attribute_encoding" flags="32">
+          <data type="name">
+            <name internal="lcldrvm_attribute_encoding_enum:0">UTF-8</name>
+          </data>
+        </option>
+        <option name="lcldrvm_search_all_attribs" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="lcldrvm_attrib_file_extns" flags="32">
+          <data type="wstring">*.ATT; *.ATTRIB; *.TXT</data>
+        </option>
+        <option name="lcldrvm_calc_texture_coords" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="lcldrvm_keep_empty_groups" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="lcldrvm_load_rvs_files" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="lcldrvm_rvs_trans_mat" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="lcldrvm_convert_origins" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="lcldrvm_convert_2d" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="lcldrvm_convert_lines" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="lcldrvm_convert_insulation" flags="32">
+          <data type="name">
+            <name internal="lcldrvm_hidden_object_option_enum:1">Show</name>
+          </data>
+        </option>
+        <option name="lcldrvm_convert_obstruction_volumes" flags="32">
+          <data type="name">
+            <name internal="lcldrvm_hidden_object_option_enum:1">Show</name>
+          </data>
+        </option>
+        <option name="lcldrvm_enable_hyperlinks" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="lcldrvm_hyperlink_definitions" flags="32">
+          <data type="wstring"></data>
+        </option>
+      </optionset>
+      <optionset name="LcNwcLoaderPlugin:lcldstl">
+        <option name="lcldstl_default_units" flags="32">
+          <data type="name">
+            <name internal="LcOaUnitLinearEnum:0">Meters</name>
+          </data>
+        </option>
+      </optionset>
+      <optionset name="LcNwcLoaderPlugin:lcldvrml">
+        <option name="faceting_factor" flags="32">
+          <data type="float">1.000000</data>
+        </option>
+        <option name="max_facet_deviation" flags="32">
+          <data type="linear">0.000000</data>
+        </option>
+        <option name="override_normals" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="override_orientation" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="override_switches" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="default_units" flags="32">
+          <data type="name">
+            <name internal="LcOaUnitLinearEnum:0">Meters</name>
+          </data>
+        </option>
+      </optionset>
+      <optionset name="LcNwcLoaderPlugin:lcldvue">
+        <option name="faceting_factor" flags="32">
+          <data type="float">1.000000</data>
+        </option>
+        <option name="max_facet_deviation" flags="32">
+          <data type="float">0.000000</data>
+        </option>
+        <option name="use_mdb_properties" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="use_iop_transforms" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="hide_welds" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="hierarchy" flags="32">
+          <data type="name">
+            <name internal="lcldvue_hierarchy_opt:0">System Path</name>
+          </data>
+        </option>
+        <option name="system_path_property_name" flags="32">
+          <data type="wstring"></data>
+        </option>
+        <option name="system_path_delimiter" flags="32">
+          <data type="wstring"></data>
+        </option>
+      </optionset>
+    </optionset>
+    <optionset name="tools">
+      <optionset name="render">
+        <option name="display" flags="32">
+          <data type="bool">true</data>
+        </option>
+      </optionset>
+      <optionset name="clash">
+        <option name="view_zoom" flags="32">
+          <data type="float">1.000000</data>
+        </option>
+        <option name="view_dwell" flags="32">
+          <data type="float">1.000000</data>
+        </option>
+        <option name="transition" flags="32">
+          <data type="float">2.000000</data>
+        </option>
+        <option name="transparency" flags="32">
+          <data type="float">0.850000</data>
+        </option>
+        <option name="wireframes" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="distance_factor" flags="32">
+          <data type="float">2.000000</data>
+        </option>
+        <option name="use_images_subfolder" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="load_save_rules_file" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="multithreading_enabled" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="multithreading_threads" flags="32">
+          <data type="int32">32</data>
+        </option>
+        <optionset name="custom_highlight_color">
+          <optionset name="object1">
+            <option name="red" flags="32">
+              <data type="float">1.000000</data>
+            </option>
+            <option name="green" flags="32">
+              <data type="float">0.250000</data>
+            </option>
+            <option name="blue" flags="32">
+              <data type="float">0.250000</data>
+            </option>
+          </optionset>
+          <optionset name="object2">
+            <option name="red" flags="32">
+              <data type="float">0.250000</data>
+            </option>
+            <option name="green" flags="32">
+              <data type="float">1.000000</data>
+            </option>
+            <option name="blue" flags="32">
+              <data type="float">0.200000</data>
+            </option>
+          </optionset>
+        </optionset>
+        <optionset name="teststab">
+          <optionset name="columns">
+            <optionset name="testname">
+              <option name="width" flags="32">
+                <data type="float">95.000000</data>
+              </option>
+              <option name="position" flags="32">
+                <data type="int32">1</data>
+              </option>
+              <option name="visible" flags="32">
+                <data type="bool">true</data>
+              </option>
+            </optionset>
+            <optionset name="status">
+              <option name="width" flags="32">
+                <data type="float">85.000000</data>
+              </option>
+              <option name="position" flags="32">
+                <data type="int32">2</data>
+              </option>
+              <option name="visible" flags="32">
+                <data type="bool">true</data>
+              </option>
+            </optionset>
+            <optionset name="priority">
+              <option name="width" flags="32">
+                <data type="float">85.000000</data>
+              </option>
+              <option name="position" flags="32">
+                <data type="int32">3</data>
+              </option>
+              <option name="visible" flags="32">
+                <data type="bool">true</data>
+              </option>
+            </optionset>
+            <optionset name="defaultassignee">
+              <option name="width" flags="32">
+                <data type="float">120.000000</data>
+              </option>
+              <option name="position" flags="32">
+                <data type="int32">4</data>
+              </option>
+              <option name="visible" flags="32">
+                <data type="bool">true</data>
+              </option>
+            </optionset>
+            <optionset name="lastrun">
+              <option name="width" flags="32">
+                <data type="float">80.000000</data>
+              </option>
+              <option name="position" flags="32">
+                <data type="int32">5</data>
+              </option>
+              <option name="visible" flags="32">
+                <data type="bool">true</data>
+              </option>
+            </optionset>
+            <optionset name="totalissues">
+              <option name="width" flags="32">
+                <data type="float">90.000000</data>
+              </option>
+              <option name="position" flags="32">
+                <data type="int32">6</data>
+              </option>
+              <option name="visible" flags="32">
+                <data type="bool">true</data>
+              </option>
+            </optionset>
+            <optionset name="newissues">
+              <option name="width" flags="32">
+                <data type="float">80.000000</data>
+              </option>
+              <option name="position" flags="32">
+                <data type="int32">7</data>
+              </option>
+              <option name="visible" flags="32">
+                <data type="bool">true</data>
+              </option>
+            </optionset>
+            <optionset name="activeissues">
+              <option name="width" flags="32">
+                <data type="float">90.000000</data>
+              </option>
+              <option name="position" flags="32">
+                <data type="int32">8</data>
+              </option>
+              <option name="visible" flags="32">
+                <data type="bool">true</data>
+              </option>
+            </optionset>
+            <optionset name="reviewedissues">
+              <option name="width" flags="32">
+                <data type="float">110.000000</data>
+              </option>
+              <option name="position" flags="32">
+                <data type="int32">9</data>
+              </option>
+              <option name="visible" flags="32">
+                <data type="bool">true</data>
+              </option>
+            </optionset>
+            <optionset name="approvedissues">
+              <option name="width" flags="32">
+                <data type="float">110.000000</data>
+              </option>
+              <option name="position" flags="32">
+                <data type="int32">10</data>
+              </option>
+              <option name="visible" flags="32">
+                <data type="bool">true</data>
+              </option>
+            </optionset>
+            <optionset name="resolvedissues">
+              <option name="width" flags="32">
+                <data type="float">110.000000</data>
+              </option>
+              <option name="position" flags="32">
+                <data type="int32">11</data>
+              </option>
+              <option name="visible" flags="32">
+                <data type="bool">true</data>
+              </option>
+            </optionset>
+          </optionset>
+          <optionset name="testdetails">
+            <option name="expander" flags="32">
+              <data type="bool">true</data>
+            </option>
+            <option name="height" flags="32">
+              <data type="float">277.000000</data>
+            </option>
+          </optionset>
+        </optionset>
+        <optionset name="resultstab">
+          <optionset name="columns">
+            <optionset name="name">
+              <option name="width" flags="32">
+                <data type="float">110.000000</data>
+              </option>
+              <option name="position" flags="32">
+                <data type="int32">1</data>
+              </option>
+              <option name="visible" flags="32">
+                <data type="bool">true</data>
+              </option>
+            </optionset>
+            <optionset name="children">
+              <optionset name="count">
+                <option name="width" flags="32">
+                  <data type="float">40.000000</data>
+                </option>
+                <option name="position" flags="32">
+                  <data type="int32">2</data>
+                </option>
+                <option name="visible" flags="32">
+                  <data type="bool">true</data>
+                </option>
+              </optionset>
+            </optionset>
+            <optionset name="viewpoint">
+              <option name="width" flags="32">
+                <data type="float">20.000000</data>
+              </option>
+              <option name="position" flags="32">
+                <data type="int32">3</data>
+              </option>
+              <option name="visible" flags="32">
+                <data type="bool">true</data>
+              </option>
+            </optionset>
+            <optionset name="commentcount">
+              <option name="width" flags="32">
+                <data type="float">20.000000</data>
+              </option>
+              <option name="position" flags="32">
+                <data type="int32">4</data>
+              </option>
+              <option name="visible" flags="32">
+                <data type="bool">true</data>
+              </option>
+            </optionset>
+            <optionset name="status">
+              <option name="width" flags="32">
+                <data type="float">75.000000</data>
+              </option>
+              <option name="position" flags="32">
+                <data type="int32">5</data>
+              </option>
+              <option name="visible" flags="32">
+                <data type="bool">true</data>
+              </option>
+            </optionset>
+            <optionset name="priority">
+              <option name="width" flags="32">
+                <data type="float">75.000000</data>
+              </option>
+              <option name="position" flags="32">
+                <data type="int32">6</data>
+              </option>
+              <option name="visible" flags="32">
+                <data type="bool">true</data>
+              </option>
+            </optionset>
+            <optionset name="description">
+              <option name="width" flags="32">
+                <data type="float">120.000000</data>
+              </option>
+              <option name="position" flags="32">
+                <data type="int32">7</data>
+              </option>
+              <option name="visible" flags="32">
+                <data type="bool">true</data>
+              </option>
+            </optionset>
+            <optionset name="issuedata">
+              <optionset name="label">
+                <option name="width" flags="32">
+                  <data type="float">60.000000</data>
+                </option>
+                <option name="position" flags="32">
+                  <data type="int32">8</data>
+                </option>
+                <option name="visible" flags="32">
+                  <data type="bool">true</data>
+                </option>
+              </optionset>
+            </optionset>
+            <optionset name="gridlevel">
+              <option name="width" flags="32">
+                <data type="float">60.000000</data>
+              </option>
+              <option name="position" flags="32">
+                <data type="int32">9</data>
+              </option>
+              <option name="visible" flags="32">
+                <data type="bool">true</data>
+              </option>
+            </optionset>
+            <optionset name="gridintersection">
+              <option name="width" flags="32">
+                <data type="float">60.000000</data>
+              </option>
+              <option name="position" flags="32">
+                <data type="int32">10</data>
+              </option>
+              <option name="visible" flags="32">
+                <data type="bool">true</data>
+              </option>
+            </optionset>
+            <optionset name="createdtime">
+              <option name="width" flags="32">
+                <data type="float">120.000000</data>
+              </option>
+              <option name="position" flags="32">
+                <data type="int32">11</data>
+              </option>
+              <option name="visible" flags="32">
+                <data type="bool">true</data>
+              </option>
+            </optionset>
+            <optionset name="assignedto">
+              <option name="width" flags="32">
+                <data type="float">70.000000</data>
+              </option>
+              <option name="position" flags="32">
+                <data type="int32">12</data>
+              </option>
+              <option name="visible" flags="32">
+                <data type="bool">true</data>
+              </option>
+            </optionset>
+            <optionset name="approvedby">
+              <option name="width" flags="32">
+                <data type="float">70.000000</data>
+              </option>
+              <option name="position" flags="32">
+                <data type="int32">13</data>
+              </option>
+              <option name="visible" flags="32">
+                <data type="bool">true</data>
+              </option>
+            </optionset>
+            <optionset name="approvedtime">
+              <option name="width" flags="32">
+                <data type="float">120.000000</data>
+              </option>
+              <option name="position" flags="32">
+                <data type="int32">14</data>
+              </option>
+              <option name="visible" flags="32">
+                <data type="bool">true</data>
+              </option>
+            </optionset>
+            <optionset name="resolvedby">
+              <option name="width" flags="32">
+                <data type="float">70.000000</data>
+              </option>
+              <option name="position" flags="32">
+                <data type="int32">15</data>
+              </option>
+              <option name="visible" flags="32">
+                <data type="bool">true</data>
+              </option>
+            </optionset>
+            <optionset name="resolvedtime">
+              <option name="width" flags="32">
+                <data type="float">120.000000</data>
+              </option>
+              <option name="position" flags="32">
+                <data type="int32">16</data>
+              </option>
+              <option name="visible" flags="32">
+                <data type="bool">true</data>
+              </option>
+            </optionset>
+            <optionset name="distance">
+              <option name="width" flags="32">
+                <data type="float">70.000000</data>
+              </option>
+              <option name="position" flags="32">
+                <data type="int32">17</data>
+              </option>
+              <option name="visible" flags="32">
+                <data type="bool">true</data>
+              </option>
+            </optionset>
+            <optionset name="simulationname">
+              <option name="width" flags="32">
+                <data type="float">70.000000</data>
+              </option>
+              <option name="position" flags="32">
+                <data type="int32">18</data>
+              </option>
+              <option name="visible" flags="32">
+                <data type="bool">false</data>
+              </option>
+            </optionset>
+            <optionset name="simulationstarttime">
+              <option name="width" flags="32">
+                <data type="float">120.000000</data>
+              </option>
+              <option name="position" flags="32">
+                <data type="int32">19</data>
+              </option>
+              <option name="visible" flags="32">
+                <data type="bool">false</data>
+              </option>
+            </optionset>
+            <optionset name="simulationendtime">
+              <option name="width" flags="32">
+                <data type="float">120.000000</data>
+              </option>
+              <option name="position" flags="32">
+                <data type="int32">20</data>
+              </option>
+              <option name="visible" flags="32">
+                <data type="bool">false</data>
+              </option>
+            </optionset>
+            <optionset name="center">
+              <option name="width" flags="32">
+                <data type="float">65.000000</data>
+              </option>
+              <option name="position" flags="32">
+                <data type="int32">21</data>
+              </option>
+              <option name="visible" flags="32">
+                <data type="bool">false</data>
+              </option>
+            </optionset>
+            <optionset name="testtype">
+              <option name="width" flags="32">
+                <data type="float">70.000000</data>
+              </option>
+              <option name="position" flags="32">
+                <data type="int32">22</data>
+              </option>
+              <option name="visible" flags="32">
+                <data type="bool">false</data>
+              </option>
+            </optionset>
+          </optionset>
+          <optionset name="displaysettings">
+            <option name="expander" flags="32">
+              <data type="bool">false</data>
+            </option>
+          </optionset>
+          <optionset name="itemdetails">
+            <option name="expander" flags="32">
+              <data type="bool">false</data>
+            </option>
+            <option name="height" flags="32">
+              <data type="float">142.000000</data>
+            </option>
+          </optionset>
+        </optionset>
+        <optionset name="timeformats">
+          <option name="lastruntime" flags="32">
+            <data type="wstring">F</data>
+          </option>
+          <option name="clashtime" flags="32">
+            <data type="wstring">HH:mm:ss dd-MM-yyyy</data>
+          </option>
+          <option name="animatortime" flags="32">
+            <data type="wstring">c</data>
+          </option>
+        </optionset>
+        <optionset name="displaysettings">
+          <option name="selection_filtering_mode" flags="32">
+            <data type="int32">0</data>
+          </option>
+          <option name="auto_reveal" flags="32">
+            <data type="bool">false</data>
+          </option>
+          <option name="lock_pivot" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="auto_zoom" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="auto_save" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="auto_load" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="animate_transitions" flags="32">
+            <data type="bool">false</data>
+          </option>
+          <option name="highlight_all" flags="32">
+            <data type="bool">false</data>
+          </option>
+          <option name="dim_other" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="transparent_dimming" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="hide_other" flags="32">
+            <data type="bool">false</data>
+          </option>
+          <option name="auto_simulate" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="object1_highlight" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="object2_highlight" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <option name="view_in_context_mode" flags="32">
+            <data type="int32">0</data>
+          </option>
+          <option name="custom_highlight_colors" flags="32">
+            <data type="bool">true</data>
+          </option>
+        </optionset>
+      </optionset>
+      <optionset name="lctimeliner">
+        <option name="simple_simulation_avp" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="enable_find" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="date_format" flags="32">
+          <data type="name">
+            <name internal="DATE_FORMAT_NAME:0">Default Locale</name>
+          </data>
+        </option>
+        <option name="enable_time" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="enable_seconds" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="auto_select_attached" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="allow_edit_invalid_dates" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="working_hours_start" flags="32">
+          <data type="int32">9</data>
+        </option>
+        <option name="working_hours_end" flags="32">
+          <data type="int32">17</data>
+        </option>
+        <option name="report_import_warnings" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <optionset name="export">
+          <optionset name="xml">
+            <option name="fix_start_dates" flags="32">
+              <data type="bool">false</data>
+            </option>
+            <option name="fix_duration" flags="32">
+              <data type="bool">false</data>
+            </option>
+          </optionset>
+          <optionset name="csv">
+            <option name="encoding_write" flags="32">
+              <data type="name">
+                <name internal="lcodptimeliner_opt_csv_encoding_write_enum:0">Multibyte</name>
+              </data>
+            </option>
+            <option name="encoding_read" flags="32">
+              <data type="name">
+                <name internal="lcodptimeliner_opt_csv_encoding_read_enum:0">Multibyte</name>
+              </data>
+            </option>
+          </optionset>
+        </optionset>
+      </optionset>
+      <optionset name="compare">
+        <option name="save_as_sets" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="save_diffs" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="remove_old" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="highlight_results" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="hide_matched" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="match_geometry" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="diff_geometry" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="match_name" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="diff_name" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="diff_path" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="diff_properties" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="match_tree" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="diff_tree" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="match_type" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="diff_type" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="diff_overridden_material" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="diff_overridden_transform" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="match_unique_ids" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="diff_unique_ids" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="max_details" flags="32">
+          <data type="int32">50</data>
+        </option>
+        <option name="ignore_filename_properties" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="linear_tolerance" flags="32">
+          <data type="linear">0.000000</data>
+        </option>
+      </optionset>
+      <optionset name="quantification">
+        <option name="paste_markup_with_offset_option" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="launch_help_option" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="clean_grid_option" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="clean_level_option" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="clean_tag_option" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="clean_dimension_option" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="clean_elevation_option" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="clean_section_option" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="clean_viewport_option" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="clean_hatch_option" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="auto_apply_quantification_appearance" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="bucket_fill_and_quick_box_polygon_max_point_numbe" flags="32">
+          <data type="int32">500</data>
+        </option>
+        <option name="bucket_fill_and_quick_box_tolerance" flags="32">
+          <data type="float">0.000001</data>
+        </option>
+        <option name="show_viewport_bounds_option_path" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="allow_auto_pan_option" flags="32">
+          <data type="bool">true</data>
+        </option>
+        <option name="DefaultPromptDirForImport" flags="32">
+          <data type="wstring">C:\Users\gudarziang\AppData\Roaming\Autodesk\Navisworks Manage 2026\Quantification\catalogs</data>
+        </option>
+        <option name="DefaultPromptDirForExport" flags="32">
+          <data type="wstring">C:\Users\gudarziang\Documents</data>
+        </option>
+      </optionset>
+      <optionset name="bim360issues">
+        <option name="debugging_enabled" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="show_all_files" flags="32">
+          <data type="bool">false</data>
+        </option>
+        <option name="ui_server" flags="32">
+          <data type="name">
+            <name internal="nwissues-options-server:0">Default</name>
+          </data>
+        </option>
+      </optionset>
+      <optionset name="coordination">
+        <option name="cull_radius" flags="32">
+          <data type="linear">0.000000</data>
+        </option>
+        <optionset name="clash_highlighting">
+          <option name="enable" flags="32">
+            <data type="bool">true</data>
+          </option>
+          <optionset name="primary_color">
+            <option name="red" flags="32">
+              <data type="float">1.000000</data>
+            </option>
+            <option name="green" flags="32">
+              <data type="float">0.250000</data>
+            </option>
+            <option name="blue" flags="32">
+              <data type="float">0.250000</data>
+            </option>
+          </optionset>
+          <optionset name="secondary_color">
+            <option name="red" flags="32">
+              <data type="float">0.250000</data>
+            </option>
+            <option name="green" flags="32">
+              <data type="float">1.000000</data>
+            </option>
+            <option name="blue" flags="32">
+              <data type="float">0.200000</data>
+            </option>
+          </optionset>
+        </optionset>
+        <optionset name="status_syncing">
+          <option name="enable" flags="32">
+            <data type="bool">true</data>
+          </option>
+        </optionset>
+      </optionset>
+      <optionset name="scripter">
+        <option name="message_path" flags="32">
+          <data type="wstring"></data>
+        </option>
+        <option name="message_level" flags="32">
+          <data type="name">
+            <name internal="lcodpanimator_msg_level_enum:0">User</name>
+          </data>
+        </option>
+      </optionset>
+      <optionset name="animator">
+        <option name="show_editbar" flags="32">
+          <data type="bool">true</data>
+        </option>
+      </optionset>
+    </optionset>
+  </optionset>
+</exchange>

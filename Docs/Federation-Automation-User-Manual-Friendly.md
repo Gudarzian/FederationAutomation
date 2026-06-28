@@ -1,7 +1,7 @@
 # Federation Automation Guide (Friendly Version)
 
-Version date: 2026-06-26  
-Applies to: `Federation-Automation.exe`, `006-Main.ps1` / `006-Main.exe`
+Version date: 2026-06-29  
+Applies to: `FA_GUI.exe`, `FA_Main.exe`, and the packaged generic configuration templates
 
 ## 1. What This Process Does
 
@@ -82,19 +82,31 @@ It also handles common path differences between users and synced environments su
 
 In the standard packaged setup, the key runtime files are:
 
-- `006-Main.exe`
+- `FA_Main.exe`
+- `FA_GUI.exe`
 - a valid `Config.json` file (recommended), or a legacy `Config.xlsx` workbook
+- `NavisworksOptions.xml` when the configuration references the default Navisworks options file
 
 Place the selected configuration beside the EXE unless you pass a different path at launch. JSON is the primary editable format. If the configuration points to additional external files, such as a custom Navisworks XML file, those files must also be available at the configured paths.
+
+The GitHub/release library keeps runnable files under `Exe_Files`. A normal starter package contains:
+
+- `Exe_Files\FA_GUI.exe`
+- `Exe_Files\FA_Main.exe`
+- `Exe_Files\Config.json`
+- `Exe_Files\Config.xlsx`
+- `Exe_Files\NavisworksOptions.xml`
+
+The supplied `Config.json` and `Config.xlsx` are generic templates. They intentionally use relative folders such as `SourceFiles`, `ProcessedIFC`, `Output`, and example source rows such as `ExampleSourceFiles`. Replace those rows with real project folders before enabling source acquisition or federation.
 
 ### 3.2 Typical launch examples
 
 The EXE can be started in any of the following ways:
 
-.\006-Main.exe
-.\006-Main.exe Config.json
-.\006-Main.exe Config.xlsx
-.\006-Main.exe C:\Runs\Project\Config.json
+.\FA_Main.exe
+.\FA_Main.exe Config.json
+.\FA_Main.exe Config.xlsx
+.\FA_Main.exe C:\Runs\Project\Config.json
 
 The first example uses the default selection. The next two use a configuration beside the EXE. The final example uses a configuration stored elsewhere, such as a project-specific folder.
 
@@ -115,10 +127,11 @@ When the EXE starts, it first works from its own folder, then sets the current p
 
 ### 3.5 Using the Federation Automation GUI
 
-`Federation-Automation.exe` is the recommended interactive launcher. It opens, edits, validates, saves, and runs the same JSON configuration used by the command-line process.
+`FA_GUI.exe` is the recommended interactive launcher. It opens, edits, validates, saves, and runs the same JSON configuration used by the command-line process.
 
 - **Settings** contains folders, source acquisition, IFC processing, federation, and Revizto options. Section switches enable or disable the related stage.
 - **Download**, **Attributes**, and **Grouping** are editable tables. **Lookups** is also available when the Naming Convention and Lookups grouping method is selected.
+  - Checkbox columns use compact widths. Hover over column headers for guidance, including wildcard and comma-separated filter examples.
   - Type into the blank row at the bottom to add one row.
   - To add several rows, copy tab-separated rows from Excel, select the first destination cell, and press `Ctrl+V`. The GUI adds required rows automatically.
 - **Grouping** contains the grouping-method selector. It shows the filename-part `Federation` table for Naming Convention and Lookups, or the `WildcardSelection` table for Wildcard Selection. Method-specific settings are shown above the active table.
@@ -126,9 +139,18 @@ When the EXE starts, it first works from its own folder, then sets the current p
 
 Use **Save** to keep configuration changes without running the process, or **Save and Run** to save and begin a run immediately.
 
+When opening, creating, saving, or exporting configuration files, the GUI starts file dialogs in the folder of the current configuration path. This keeps related JSON, Excel, and XML files together instead of jumping to the last folder used by Windows.
+
 ## 4. Introduction to the Config File and How to Set It Up
 
 The behaviour and logic are controlled by a JSON configuration file, typically named `Config.json`. The application can open legacy Excel configurations and export the current JSON settings back to Excel when needed. The current Excel template is `Federation-Automation-Config.xlsx`; `Config.xlsx` is also supported as the default legacy Excel file name when no JSON configuration is present.
+
+For a new project, start from the generic templates:
+
+- `Generic_Config.json`
+- `Generic_Config.xlsx`
+
+In the runnable `Exe_Files` package these are copied as `Config.json` and `Config.xlsx` so the EXEs can be tested immediately. The templates contain no project-specific ACC, ProjectWise, Revizto, user-profile, or model-code information.
 
 The configuration contains these collections (Excel uses the same named ranges):
 
@@ -455,6 +477,7 @@ Use this collection only when `FederationGroupingMethod` is `Wildcard Selection`
 
 Expected columns:
 
+- `Run`
 - `Inclusions`
 - `Exclusions`
 - `ExportFileName`
@@ -462,7 +485,8 @@ Expected columns:
 
 How each row works:
 
-- `Inclusions` is required. Enter one or more comma-separated Windows wildcard patterns. A file is included when it matches **any** pattern. Matching is case-insensitive and includes the file extension; for example, `HAZ*ARC*.ifc`.
+- `Run` controls whether the wildcard rule is executed. Existing configurations without this column are treated as enabled.
+- `Inclusions` is required. Enter one or more comma-separated Windows wildcard patterns. A file is included when it matches **any** pattern. Matching is case-insensitive and includes the file extension; for example, `PRJ*ARC*.ifc`.
 - `Exclusions` is optional. Enter comma-separated wildcard patterns. A matching file is excluded if it matches **any** exclusion pattern.
 - `ExportFileName` is required and names the Navisworks file created by the rule.
   - If the name ends with `.nwf`, that wildcard row is saved as NWF.
@@ -475,13 +499,13 @@ There is no separate final-model checkbox or `FederatedFileName` step in this mo
 
 Example hierarchy:
 
-| Inclusions | Exclusions | ExportFileName | ReadFromOutputFolder |
-| --- | --- | --- | --- |
-| `HAZ*ARC*.ifc` |  | `Architecture.nwd` | No |
-| `HAZ*MEP*.ifc` |  | `MEP.nwd` | No |
-| `Architecture.nwd,MEP.nwd` |  | `Project Federated.nwd` | Yes |
+| Run | Inclusions | Exclusions | ExportFileName | ReadFromOutputFolder |
+| --- | --- | --- | --- | --- |
+| Yes | `PRJ*ARC*.ifc` |  | `Architecture.nwd` | No |
+| Yes | `PRJ*MEP*.ifc` |  | `MEP.nwd` | No |
+| Yes | `Architecture.nwd,MEP.nwd` |  | `Project Federated.nwd` | Yes |
 
-Rules with no matches write a warning and are skipped. Federation stops only when no wildcard rule creates an NWD. A rule never includes its own output file.
+Rules with `Run=No` are ignored. Rules with no matches write a warning and are skipped. Federation stops only when no enabled wildcard rule creates an NWD. A rule never includes its own output file.
 
 ### 4.6 `Lookups` range (code-to-description mapping)
 
@@ -607,7 +631,7 @@ Key rules for this stage:
 - Local/synced `ReadFolder` values can be absolute paths, relative paths, UNC paths, ACC Desktop Connector paths, OneDrive paths, or SharePoint sync paths.
 - Local/synced folders are not read recursively. Add subfolders as separate rows if needed.
 - Different rows can use different source types and different ProjectWise datasources.
-- `FileFilter` uses wildcard matching (`*`, `?`).
+- `FileFilter` uses wildcard matching (`*`, `?`) and can contain multiple comma-separated patterns, for example `*ARC*.ifc,*CEW*.nwc`.
 - `Exclude` is comma-delimited and removes matches by name.
 - `CheckDateToo` influences date-based comparison when `SkipIfSame` is used.
 - Source staging/download safety rules:
