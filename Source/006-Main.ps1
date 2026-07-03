@@ -309,6 +309,7 @@ Resolve-SettingEntry -Settings $settingsCache -Names @('ProcessedFolder') -Defau
 Resolve-SettingEntry -Settings $settingsCache -Names @('AttributesFile') -DefaultValue $attributesDefault -DisplayName 'AttributesFile'
 Resolve-SettingEntry -Settings $settingsCache -Names @('LogFolder') -DefaultValue $logDefault -DisplayName 'LogFolder'
 Resolve-SettingEntry -Settings $settingsCache -Names @('FederationOutputFolder') -DefaultValue $outputDefault -DisplayName 'FederationOutputFolder'
+Resolve-SettingEntry -Settings $settingsCache -Names @('DestinationFolder') -DefaultValue 'Destination' -DisplayName 'DestinationFolder'
 
 $runDownloadValue = Get-SettingValue -Settings $settingsCache -Names @('RunDownload','RunPWDownload')
 $runDownloadEnabled = $true
@@ -399,6 +400,15 @@ $navisworksConfigSource = if ($navisworksConfigSetting -and -not [string]::IsNul
 }
 $navisworksConfig = if ($navisworksConfigSetting -and -not [string]::IsNullOrWhiteSpace($navisworksConfigSetting.ToString())) { $navisworksConfigSetting } else { $navisworksOptionsDefault }
 Write-SettingsLine -Name "NavisworksConfigXML" -Value $navisworksConfig -Source $navisworksConfigSource
+
+$navisworksSavedNwdVersionSetting = Get-SettingValue -Settings $settingsCache -Names @('NavisworksSavedNwdVersion')
+$navisworksSavedNwdVersionSource = if ($navisworksSavedNwdVersionSetting -and -not [string]::IsNullOrWhiteSpace($navisworksSavedNwdVersionSetting.ToString())) {
+    "Settings"
+} else {
+    if ($settingsMissing) { "Default (Settings missing)" } else { "Default" }
+}
+$navisworksSavedNwdVersion = if ($navisworksSavedNwdVersionSetting -and -not [string]::IsNullOrWhiteSpace($navisworksSavedNwdVersionSetting.ToString())) { $navisworksSavedNwdVersionSetting } else { "Latest" }
+Write-SettingsLine -Name "NavisworksSavedNwdVersion" -Value $navisworksSavedNwdVersion -Source $navisworksSavedNwdVersionSource
 
 $navisworksViewsImportSetting = Get-SettingValue -Settings $settingsCache -Names @('NavisworksViewsImportXML')
 if ($navisworksViewsImportSetting -and -not [string]::IsNullOrWhiteSpace($navisworksViewsImportSetting.ToString())) {

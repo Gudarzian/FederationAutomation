@@ -270,13 +270,13 @@ function Normalize-FEDAUTOGroupOrders {
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Title="Federation Automation" Height="820" Width="1280" MinHeight="620" MinWidth="960" WindowStartupLocation="CenterScreen" Background="#F5F7FA">
   <DockPanel>
     <Border DockPanel.Dock="Top" Background="#07345C" Padding="24,16"><StackPanel><TextBlock Text="Federation Automation" Foreground="White" FontSize="28" FontWeight="SemiBold"/><TextBlock Text="Configuration and model federation" Foreground="#C9D8E6" FontSize="15"/></StackPanel></Border>
-    <Border DockPanel.Dock="Bottom" Background="White" Padding="16" BorderBrush="#D5DCE3" BorderThickness="0,1,0,0"><DockPanel><TextBlock Name="StatusText" Text="Ready" VerticalAlignment="Center" Foreground="#425466"/><StackPanel Orientation="Horizontal" HorizontalAlignment="Right"><Button Name="ExportExcelButton" Content="Export Excel..." Padding="16,7" Margin="0,0,10,0"/><Button Name="ValidateButton" Content="Validate configuration" Padding="16,7" Margin="0,0,10,0"/><Button Name="SaveButton" Content="Save" Padding="22,7" Margin="0,0,10,0"/><Button Name="RunButton" Content="Save and Run" Padding="22,7" Background="#0867C8" Foreground="White" FontWeight="SemiBold"/></StackPanel></DockPanel></Border>
+    <Border DockPanel.Dock="Bottom" Background="White" Padding="16" BorderBrush="#D5DCE3" BorderThickness="0,1,0,0"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Name="StatusText" Text="Ready" VerticalAlignment="Center" Foreground="#425466" TextWrapping="Wrap" MaxHeight="42" Margin="0,0,16,0"/><StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center"><Button Name="ExportExcelButton" Content="Export Excel..." Padding="16,7" Margin="0,0,10,0"/><Button Name="ValidateButton" Content="Validate configuration" Padding="16,7" Margin="0,0,10,0"/><Button Name="SaveButton" Content="Save" Padding="22,7" Margin="0,0,10,0"/><Button Name="RunButton" Content="Save and Run" Padding="22,7" Background="#0867C8" Foreground="White" FontWeight="SemiBold"/></StackPanel></Grid></Border>
     <Grid Margin="24"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
       <Grid Grid.Row="0" Margin="0,0,0,16"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBox Name="ConfigPathBox" FontSize="15" Padding="10" VerticalContentAlignment="Center"/><Button Name="OpenButton" Grid.Column="1" Content="Open..." Padding="18,8" Margin="10,0,0,0"/><Button Name="NewButton" Grid.Column="2" Content="New JSON" Padding="18,8" Margin="10,0,0,0"/></Grid>
       <TabControl Grid.Row="1" Name="MainTabs"><TabItem Header="Settings"><ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Name="SettingsPanel" Margin="20"/></ScrollViewer></TabItem>
         <TabItem Header="Download"><DockPanel Margin="10"><Border Name="DownloadStatusPanel" DockPanel.Dock="Top" Background="#D9E8F5" Padding="10,7" Margin="0,0,0,10" CornerRadius="3"><DockPanel><Button Name="PreviewMatchesButton" DockPanel.Dock="Right" Content="Preview Matches" Padding="12,4" Margin="10,0,0,0"/><TextBlock Name="DownloadStatusText" TextWrapping="Wrap" VerticalAlignment="Center"/></DockPanel></Border><DataGrid Name="DownloadGrid" AutoGenerateColumns="True" CanUserAddRows="True" CanUserDeleteRows="True" EnableRowVirtualization="False" VirtualizingPanel.IsVirtualizing="False" ClipboardCopyMode="ExcludeHeader"/></DockPanel></TabItem>
         <TabItem Header="Attributes"><DataGrid Name="AttributesGrid" Margin="10" AutoGenerateColumns="True" CanUserAddRows="True" CanUserDeleteRows="True" EnableRowVirtualization="False" VirtualizingPanel.IsVirtualizing="False" ClipboardCopyMode="ExcludeHeader"/></TabItem>
-        <TabItem Header="Grouping"><DockPanel Margin="10"><StackPanel Name="GroupingOptionsPanel" DockPanel.Dock="Top" Margin="0,0,0,10"/><Grid><DataGrid Name="WildcardSelectionGrid" Visibility="Collapsed" AutoGenerateColumns="True" CanUserAddRows="True" CanUserDeleteRows="True" EnableRowVirtualization="False" VirtualizingPanel.IsVirtualizing="False" ClipboardCopyMode="ExcludeHeader"/><DataGrid Name="FederationGrid" AutoGenerateColumns="True" CanUserAddRows="True" CanUserDeleteRows="True" EnableRowVirtualization="False" VirtualizingPanel.IsVirtualizing="False" ClipboardCopyMode="ExcludeHeader"/></Grid></DockPanel></TabItem>
+        <TabItem Header="Grouping"><DockPanel Margin="10"><Border Name="GroupingPreviewPanel" DockPanel.Dock="Top" Background="#DFF0C8" Padding="10,7" Margin="0,0,0,10" CornerRadius="3"><DockPanel><Button Name="PreviewGroupingButton" DockPanel.Dock="Right" Content="Preview Grouping" Padding="12,4" Margin="10,0,0,0"/><TextBlock Name="GroupingPreviewText" Text="Preview how source files will be grouped and federated before running Navisworks." TextWrapping="Wrap" VerticalAlignment="Center"/></DockPanel></Border><StackPanel Name="GroupingOptionsPanel" DockPanel.Dock="Top" Margin="0,0,0,10"/><Grid><DataGrid Name="WildcardSelectionGrid" Visibility="Collapsed" AutoGenerateColumns="True" CanUserAddRows="True" CanUserDeleteRows="True" EnableRowVirtualization="False" VirtualizingPanel.IsVirtualizing="False" ClipboardCopyMode="ExcludeHeader"/><DataGrid Name="FederationGrid" AutoGenerateColumns="True" CanUserAddRows="True" CanUserDeleteRows="True" EnableRowVirtualization="False" VirtualizingPanel.IsVirtualizing="False" ClipboardCopyMode="ExcludeHeader"/></Grid></DockPanel></TabItem>
         <TabItem Name="LookupsTab" Header="Lookups"><DataGrid Name="LookupsGrid" Margin="10" AutoGenerateColumns="True" CanUserAddRows="True" CanUserDeleteRows="True" EnableRowVirtualization="False" VirtualizingPanel.IsVirtualizing="False" ClipboardCopyMode="ExcludeHeader"/></TabItem>
         <TabItem Header="Run"><Grid Margin="18"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions><TextBlock Text="Run dashboard" FontSize="22" FontWeight="SemiBold"/><TextBlock Grid.Row="1" Text="Save the configuration, then run the same pipeline used by the command-line launcher." Foreground="#566573" Margin="0,8,0,14"/><Border Grid.Row="2" Background="White" BorderBrush="#D5DCE3" BorderThickness="1" CornerRadius="4" Padding="16" Margin="0,0,0,12"><StackPanel><TextBlock Text="Overall status" Foreground="#566573"/><TextBlock Name="RunStageText" Text="Ready" FontSize="18" FontWeight="Bold" Margin="0,3,0,2"/><TextBlock Name="RunDetailText" Text="Waiting to start." Foreground="#425466" TextTrimming="CharacterEllipsis"/><ProgressBar Name="RunProgressBar" Minimum="0" Maximum="100" Value="0" Height="14" Margin="0,12,0,0"/></StackPanel></Border><Border Grid.Row="3" Background="White" BorderBrush="#D5DCE3" BorderThickness="1" CornerRadius="4" Padding="18"><Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions><TextBlock Text="Live activity" FontSize="18" FontWeight="SemiBold"/><RichTextBox Name="ActivityBox" Grid.Row="1" Margin="0,12,0,0" IsReadOnly="True" VerticalScrollBarVisibility="Auto"/></Grid></Border></Grid></TabItem>
        </TabControl>
@@ -286,7 +286,7 @@ function Normalize-FEDAUTOGroupOrders {
 '@
 $reader = New-Object System.Xml.XmlNodeReader $xaml
 $window = [Windows.Markup.XamlReader]::Load($reader)
-foreach ($name in 'ConfigPathBox','OpenButton','NewButton','SaveButton','RunButton','ValidateButton','ExportExcelButton','StatusText','ActivityBox','RunStageText','RunDetailText','RunProgressBar','MainTabs','SettingsPanel','DownloadStatusPanel','DownloadStatusText','PreviewMatchesButton','DownloadGrid','AttributesGrid','FederationGrid','WildcardSelectionGrid','GroupingOptionsPanel','LookupsGrid','LookupsTab') { Set-Variable -Name $name -Value $window.FindName($name) }
+foreach ($name in 'ConfigPathBox','OpenButton','NewButton','SaveButton','RunButton','ValidateButton','ExportExcelButton','StatusText','ActivityBox','RunStageText','RunDetailText','RunProgressBar','MainTabs','SettingsPanel','DownloadStatusPanel','DownloadStatusText','PreviewMatchesButton','GroupingPreviewPanel','GroupingPreviewText','PreviewGroupingButton','DownloadGrid','AttributesGrid','FederationGrid','WildcardSelectionGrid','GroupingOptionsPanel','LookupsGrid','LookupsTab') { Set-Variable -Name $name -Value $window.FindName($name) }
 
 $DownloadGrid.FrozenColumnCount = 2
 $AttributesGrid.FrozenColumnCount = 2
@@ -315,7 +315,8 @@ function Get-FEDAUTOColumnDisplayName {
         Inclusions = 'Include filters'
         Exclusions = 'Exclude filters'
         ExportFileName = 'Output file'
-        ReadFromOutputFolder = 'Read outputs'
+        ReadFromOutputFolder = "Read`noutputs"
+        CopyToDestination = "Copy to`ndestination"
         Code = 'Code'
     }
     if ($labels.ContainsKey($PropertyName)) { return $labels[$PropertyName] }
@@ -344,6 +345,7 @@ function Get-FEDAUTOColumnHelpText {
         Exclusions = 'Comma-separated wildcard filters. A file is excluded when it matches any pattern.'
         ExportFileName = 'Navisworks output name for this wildcard rule. Use .nwf to create NWF; otherwise NWD is used.'
         ReadFromOutputFolder = 'When enabled, this wildcard rule reads earlier Navisworks outputs instead of source models.'
+        CopyToDestination = 'When enabled, this wildcard output is copied to DestinationFolder after federation finishes.'
         Code = 'Code value to translate for the selected filename part.'
     }
     if ($help.ContainsKey($PropertyName)) { return $help[$PropertyName] }
@@ -386,7 +388,8 @@ function Set-FEDAUTOColumnPresentation {
         'Inclusions' { $Column.MinWidth = 260; $Column.Width = [Windows.Controls.DataGridLength]::new(1, [Windows.Controls.DataGridLengthUnitType]::Star) }
         'Exclusions' { $Column.MinWidth = 220; $Column.Width = [Windows.Controls.DataGridLength]::new(1, [Windows.Controls.DataGridLengthUnitType]::Star) }
         'ExportFileName' { $Column.MinWidth = 170; $Column.Width = [Windows.Controls.DataGridLength]::new(210) }
-        'ReadFromOutputFolder' { $Column.MinWidth = 150; $Column.Width = [Windows.Controls.DataGridLength]::new(170) }
+        'ReadFromOutputFolder' { $Column.MinWidth = 82; $Column.Width = [Windows.Controls.DataGridLength]::new(92) }
+        'CopyToDestination' { $Column.MinWidth = 95; $Column.Width = [Windows.Controls.DataGridLength]::new(110) }
         'Code' { $Column.MinWidth = 130; $Column.Width = [Windows.Controls.DataGridLength]::new(150) }
         default {
             $Column.MinWidth = 120
@@ -493,9 +496,9 @@ function Set-EditorConfiguration {
         # An empty DataGrid has no generated columns and cannot accept its first
         # row. Seed the editor with a blank rule, then omit it on save/export.
         if ($wildcardRows.Count -eq 0) {
-            $wildcardRows = @([pscustomobject]@{ Run=$false; Inclusions=''; Exclusions=''; ExportFileName=''; ReadFromOutputFolder=$false })
+            $wildcardRows = @([pscustomobject]@{ Run=$false; Inclusions=''; Exclusions=''; ExportFileName=''; ReadFromOutputFolder=$false; CopyToDestination=$false })
         }
-        $script:WildcardSelectionRows = New-GridRows $wildcardRows @('Run','Inclusions','Exclusions','ExportFileName','ReadFromOutputFolder') @('IncludeInFinalModel') @('Run','ReadFromOutputFolder')
+        $script:WildcardSelectionRows = New-GridRows $wildcardRows @('Run','Inclusions','Exclusions','ExportFileName','ReadFromOutputFolder','CopyToDestination') @('IncludeInFinalModel') @('Run','ReadFromOutputFolder','CopyToDestination')
         $script:FederationGroupOrderOptions = @(0..([Math]::Max($script:FederationRows.Count, 1)) | ForEach-Object { $_.ToString() })
         Normalize-FEDAUTOGroupOrders $script:FederationRows
         # Reference was a legacy Lookups column and is not used by processing or federation.
@@ -545,6 +548,14 @@ function Show-FEDAUTOGroupingOptions {
         $WildcardSelectionGrid.Visibility = if ($isWildcard) { 'Visible' } else { 'Collapsed' }
         $LookupsTab.Visibility = if ($isWildcard) { 'Collapsed' } else { 'Visible' }
         $sender.Parent.Parent.Tag.Visibility = if ($isWildcard) { 'Collapsed' } else { 'Visible' }
+        if ($GroupingPreviewText) {
+            $GroupingPreviewText.Text = if ($isWildcard) {
+                'Preview wildcard rules, matched files, planned outputs, and destination-copy selections before running Navisworks.'
+            }
+            else {
+                'Preview naming-rule matches, grouped NWD hierarchy, and unmatched files before running Navisworks.'
+            }
+        }
     })
     & $addRow 'Grouping method' $methodCombo
     $finalNameBox = New-Object Windows.Controls.TextBox -Property @{ Text=$(if ($finalNameSetting) { $finalNameSetting.Value } else { 'Project Federated.nwd' }); Padding='5,3'; Tag=$finalNameSetting }
@@ -567,6 +578,14 @@ function Show-FEDAUTOGroupingOptions {
     $WildcardSelectionGrid.Visibility = if ($isWildcard) { 'Visible' } else { 'Collapsed' }
     $LookupsTab.Visibility = if ($isWildcard) { 'Collapsed' } else { 'Visible' }
     $legacyPanel.Visibility = if ($isWildcard) { 'Collapsed' } else { 'Visible' }
+    if ($GroupingPreviewText) {
+        $GroupingPreviewText.Text = if ($isWildcard) {
+            'Preview wildcard rules, matched files, planned outputs, and destination-copy selections before running Navisworks.'
+        }
+        else {
+            'Preview naming-rule matches, grouped NWD hierarchy, and unmatched files before running Navisworks.'
+        }
+    }
 }
 
 function Get-FEDAUTOProcessEnabled {
@@ -588,7 +607,7 @@ function Update-FEDAUTOAttributesProcessingColumns {
 function Get-SettingControlType {
     param([string]$Parameter)
     if ($Parameter -in @('RunDownload','IncludeUnmatchedFilesInFederatedModel','NavisworksVisible')) { return 'YesNo' }
-    if ($Parameter -in @('RunProcess','RunFederation','ReviztoPublish','NWDNamingMethod')) { return 'Choice' }
+    if ($Parameter -in @('RunProcess','RunFederation','ReviztoPublish','NWDNamingMethod','NavisworksSavedNwdVersion')) { return 'Choice' }
     if ($Parameter -match '(Folder|Path)$' -or $Parameter -in @('SourceFolder','ProcessedFolder','LogFolder','FederationInputFolder','FederationOutputFolder')) { return 'Folder' }
     if ($Parameter -in @('NavisworksConfigXML','NavisworksViewsImportXML')) { return 'File' }
     return 'Text'
@@ -609,9 +628,11 @@ function Get-SettingHelpText {
         IncludeUnmatchedFilesInFederatedModel = 'Choose Yes to add models that do not match the federation naming rules to the final federated NWD.'
         FederationInputFolder = 'Folder used as the source for federation. Leave blank to let the pipeline choose ProcessedFolder or SourceFolder automatically.'
         FederationOutputFolder = 'Folder where grouped NWD files and the final federated model are created.'
+        DestinationFolder = 'Folder where selected Wildcard Selection outputs are copied after federation finishes.'
         FederatedFileName = 'Name of the final federated Navisworks model. End it with .nwf to save only the final model as NWF; otherwise .nwd is added automatically when omitted.'
         NavisworksVersion = 'Preferred installed Navisworks version. Leave blank to let the pipeline detect a suitable installed version.'
         NavisworksConfigXML = 'Optional Navisworks XML options file used when creating federated models.'
+        NavisworksSavedNwdVersion = 'NWD file version to save. Latest uses the running Navisworks version; older values require a Navisworks options XML so the hidden save-version setting can be patched.'
         NavisworksViewsImportXML = 'Optional XML file containing saved views to import into the final Navisworks model.'
         NavisworksVisible = 'Choose Yes to show Navisworks while federation runs; No runs it in the background.'
         NWDNamingMethod = 'Controls names of grouped NWD files: Full, OnlyCodes, OnlyDesc, or Codes-Desc.'
@@ -917,7 +938,7 @@ function Get-FEDAUTOInvalidFileNameCharsText {
 
 function Get-FEDAUTOWildcardSelectionRowValidation {
     param($Row)
-    if (Test-FEDAUTOBlankRow -Row $Row -TextColumns @('Inclusions','Exclusions','ExportFileName') -BooleanColumns @('Run','ReadFromOutputFolder')) {
+    if (Test-FEDAUTOBlankRow -Row $Row -TextColumns @('Inclusions','Exclusions','ExportFileName') -BooleanColumns @('Run','ReadFromOutputFolder','CopyToDestination')) {
         return New-FEDAUTOValidationResult -Severity 'Ok'
     }
 
@@ -1076,6 +1097,14 @@ function Test-FEDAUTOYesLike {
     if ($Value -is [bool]) { return $Value }
     if ($null -eq $Value) { return $false }
     return $Value.ToString().Trim().ToLowerInvariant() -in @('yes','y','true','1')
+}
+
+function Add-FEDAUTOPreviewLine {
+    param(
+        [Parameter(Mandatory = $true)]$Lines,
+        $Text = ''
+    )
+    [void]$Lines.Add([string]$Text)
 }
 
 function Show-FEDAUTOTextDialog {
@@ -1238,6 +1267,233 @@ function Show-FEDAUTODownloadMatchPreview {
     $StatusText.Text = ("Previewed download matches: {0} matched file(s)." -f $matchTotal)
 }
 
+function Resolve-FEDAUTOOutputBaseName {
+    param([string]$Name)
+    $text = ConvertTo-FEDAUTOCleanText $Name
+    if ([string]::IsNullOrWhiteSpace($text)) { return $text }
+    if ($text.EndsWith('.nwd', [StringComparison]::OrdinalIgnoreCase) -or $text.EndsWith('.nwf', [StringComparison]::OrdinalIgnoreCase)) {
+        return $text.Substring(0, $text.Length - 4)
+    }
+    return $text
+}
+
+function Get-FEDAUTOOutputExtension {
+    param([string]$Name)
+    $text = ConvertTo-FEDAUTOCleanText $Name
+    if ($text.EndsWith('.nwf', [StringComparison]::OrdinalIgnoreCase)) { return '.nwf' }
+    return '.nwd'
+}
+
+function Get-FEDAUTOFederationFolders {
+    param([array]$SettingsRows)
+    $sourceFolder = Resolve-RelativePath -PathValue (CureFolderPath (Get-FEDAUTOSettingValueFromRows -Rows $SettingsRows -Parameter 'SourceFolder' -DefaultValue 'SourceFiles')) -Root $basePath
+    $processedFolder = Resolve-RelativePath -PathValue (CureFolderPath (Get-FEDAUTOSettingValueFromRows -Rows $SettingsRows -Parameter 'ProcessedFolder' -DefaultValue 'ProcessedIFC')) -Root $basePath
+    $inputSetting = CureFolderPath (Get-FEDAUTOSettingValueFromRows -Rows $SettingsRows -Parameter 'FederationInputFolder' -DefaultValue '')
+    $runProcess = Get-FEDAUTOSettingValueFromRows -Rows $SettingsRows -Parameter 'RunProcess' -DefaultValue 'No'
+    $inputFolder = if (-not [string]::IsNullOrWhiteSpace($inputSetting)) { $inputSetting } elseif (Test-FEDAUTOYesLike $runProcess) { $processedFolder } else { $sourceFolder }
+    $inputFolder = Resolve-RelativePath -PathValue $inputFolder -Root $basePath
+    $outputFolder = Resolve-RelativePath -PathValue (CureFolderPath (Get-FEDAUTOSettingValueFromRows -Rows $SettingsRows -Parameter 'FederationOutputFolder' -DefaultValue 'Output')) -Root $basePath
+    $destinationFolder = Resolve-RelativePath -PathValue (CureFolderPath (Get-FEDAUTOSettingValueFromRows -Rows $SettingsRows -Parameter 'DestinationFolder' -DefaultValue 'Destination')) -Root $basePath
+    [pscustomobject]@{ SourceFolder=$sourceFolder; ProcessedFolder=$processedFolder; InputFolder=$inputFolder; OutputFolder=$outputFolder; DestinationFolder=$destinationFolder }
+}
+
+function Get-FEDAUTOFederationCandidateFiles {
+    param([string]$Path)
+    if (-not (Test-Path -LiteralPath $Path -PathType Container)) { return @() }
+    $allFiles = @(Get-ChildItem -LiteralPath $Path -File -ErrorAction Stop)
+    $extensions = @(Get-FederatableModelExtensions | ForEach-Object { $_.ToLowerInvariant() })
+    $sourceNames = @($allFiles | Where-Object { $_.Extension.ToLowerInvariant() -in @('.ifc','.dwg','.dgn','.rvt') } | Select-Object -ExpandProperty Name)
+    return @($allFiles | Where-Object {
+        $ext = $_.Extension.ToLowerInvariant()
+        ($extensions -contains $ext) -and -not ($ext -eq '.nwc' -and (Test-GeneratedNwcForSourceNames -NwcName $_.Name -SourceNames $sourceNames))
+    })
+}
+
+function Add-FEDAUTOGroupingPreviewCandidate {
+    param(
+        [ref]$Candidates,
+        [hashtable]$Seen,
+        [Parameter(Mandatory = $true)]$Candidate
+    )
+
+    $key = if ($Candidate.FullName) { $Candidate.FullName.ToString().ToLowerInvariant() } else { $Candidate.Name.ToString().ToLowerInvariant() }
+    if ($Seen.ContainsKey($key)) {
+        return
+    }
+    $Seen[$key] = $true
+    $Candidates.Value += $Candidate
+}
+
+function Get-FEDAUTONwdGroupNamePart {
+    param([string]$Key, [string]$Code, [string]$NamingMethod)
+    $codeText = ConvertTo-FEDAUTOCleanText $Code
+    if ([string]::IsNullOrWhiteSpace($codeText)) { $codeText = 'Unknown' }
+    switch ((ConvertTo-FEDAUTOCleanText $NamingMethod).ToLowerInvariant()) {
+        'onlycodes' { return $codeText }
+        'onlydesc' { return $codeText }
+        'codes-desc' { return $codeText }
+        default { return ("{0}_{1}" -f $Key, $codeText) }
+    }
+}
+
+function Add-FEDAUTONamingPreviewNodes {
+    param(
+        [array]$Rows,
+        [array]$GroupKeys,
+        [string]$NamingMethod,
+        [string]$ParentName = '',
+        [int]$Level = 0,
+        [System.Collections.IList]$Lines
+    )
+    if (-not $GroupKeys -or $GroupKeys.Count -eq 0) { return }
+    $currentKey = $GroupKeys[0]
+    $remaining = if ($GroupKeys.Count -gt 1) { @($GroupKeys | Select-Object -Skip 1) } else { @() }
+    $separator = if ((ConvertTo-FEDAUTOCleanText $NamingMethod).ToLowerInvariant() -eq 'full') { '---' } else { '-' }
+    foreach ($group in @($Rows | Group-Object $currentKey | Sort-Object Name)) {
+        $part = Get-FEDAUTONwdGroupNamePart -Key $currentKey -Code $group.Name -NamingMethod $NamingMethod
+        $fullName = if ($ParentName) { "$ParentName$separator$part" } else { $part }
+        $indent = '  ' * $Level
+        [void]$Lines.Add(("{0}- {1}.nwd ({2} source file(s))" -f $indent, $fullName, @($group.Group).Count))
+        Add-FEDAUTONamingPreviewNodes -Rows @($group.Group) -GroupKeys $remaining -NamingMethod $NamingMethod -ParentName $fullName -Level ($Level + 1) -Lines $Lines
+    }
+}
+
+function Show-FEDAUTOGroupingPreview {
+    param([Parameter(Mandatory = $true)]$Window)
+
+    Commit-FEDAUTOEditorChanges -Window $Window
+    $settingsRows = Get-FEDAUTOSettingsRowsFromWindow -Window $Window
+    $federationRows = Get-FEDAUTOEditorRows -Window $Window -ControlName 'FederationGrid'
+    $wildcardRows = Get-FEDAUTOEditorRows -Window $Window -ControlName 'WildcardSelectionGrid'
+    $folders = Get-FEDAUTOFederationFolders -SettingsRows $settingsRows
+    $method = Get-FEDAUTOSettingValueFromRows -Rows $settingsRows -Parameter 'FederationGroupingMethod' -DefaultValue 'Naming Convention and Lookups'
+    $isWildcard = $method.Trim().ToLowerInvariant() -eq 'wildcard selection'
+    $lines = New-Object System.Collections.Generic.List[string]
+    Add-FEDAUTOPreviewLine -Lines $lines -Text 'Federation Grouping Preview'
+    Add-FEDAUTOPreviewLine -Lines $lines -Text ('Mode: {0}' -f $(if ($isWildcard) { 'Wildcard Selection' } else { 'Naming Convention and Lookups' }))
+    Add-FEDAUTOPreviewLine -Lines $lines -Text ('Input folder: {0}' -f $folders.InputFolder)
+    Add-FEDAUTOPreviewLine -Lines $lines -Text ('Output folder: {0}' -f $folders.OutputFolder)
+    Add-FEDAUTOPreviewLine -Lines $lines -Text ('Destination folder: {0}' -f $folders.DestinationFolder)
+    Add-FEDAUTOPreviewLine -Lines $lines
+
+    if (-not (Test-Path -LiteralPath $folders.InputFolder -PathType Container)) {
+        Add-FEDAUTOPreviewLine -Lines $lines -Text ('WARNING: Federation input folder does not exist: {0}' -f $folders.InputFolder)
+        Show-FEDAUTOTextDialog -Title 'Grouping Preview' -Text ($lines -join [Environment]::NewLine)
+        $GroupingPreviewPanel.Background = '#FFF3CD'
+        $GroupingPreviewText.Text = 'Grouping preview could not scan the input folder.'
+        return
+    }
+
+    if ($isWildcard) {
+        Add-FEDAUTOPreviewLine -Lines $lines -Text 'Wildcard rules:'
+        $plannedOutputs = @()
+        $enabledCount = 0
+        $matchedTotal = 0
+        foreach ($row in @($wildcardRows | Where-Object { $_ })) {
+            $runEnabled = if ($row.PSObject.Properties.Name -contains 'Run') { Test-FEDAUTOYesLike $row.Run } else { $true }
+            if (-not $runEnabled) { continue }
+            $enabledCount++
+            $inclusionText = Get-FEDAUTOGridValue -Row $row -Name 'Inclusions'
+            $exclusionText = Get-FEDAUTOGridValue -Row $row -Name 'Exclusions'
+            $exportName = Get-FEDAUTOGridValue -Row $row -Name 'ExportFileName'
+            $readFromOutputValue = if ($row.PSObject.Properties.Name -contains 'ReadFromOutputFolder') { $row.ReadFromOutputFolder } else { $false }
+            $copyToDestinationValue = if ($row.PSObject.Properties.Name -contains 'CopyToDestination') { $row.CopyToDestination } else { $false }
+            $readFromOutput = Test-FEDAUTOYesLike -Value $readFromOutputValue
+            $copyToDestination = Test-FEDAUTOYesLike -Value $copyToDestinationValue
+            $patterns = @(Get-FEDAUTOFileFilterPatterns $inclusionText)
+            $exclusions = @(Get-FEDAUTOExcludeTerms $exclusionText)
+            $sourcePath = if ($readFromOutput) { $folders.OutputFolder } else { $folders.InputFolder }
+            $candidates = @()
+            $candidateKeys = @{}
+            if ($readFromOutput) {
+                if (Test-Path -LiteralPath $sourcePath -PathType Container) {
+                    foreach ($candidateFile in @(Get-ChildItem -LiteralPath $sourcePath -File -ErrorAction Stop)) {
+                        Add-FEDAUTOGroupingPreviewCandidate -Candidates ([ref]$candidates) -Seen $candidateKeys -Candidate ([pscustomobject]@{ Name=$candidateFile.Name; FullName=$candidateFile.FullName; Planned=$false })
+                    }
+                }
+                foreach ($plannedOutput in $plannedOutputs) {
+                    Add-FEDAUTOGroupingPreviewCandidate -Candidates ([ref]$candidates) -Seen $candidateKeys -Candidate $plannedOutput
+                }
+            }
+            else {
+                foreach ($candidateFile in @(Get-FEDAUTOFederationCandidateFiles -Path $sourcePath)) {
+                    Add-FEDAUTOGroupingPreviewCandidate -Candidates ([ref]$candidates) -Seen $candidateKeys -Candidate ([pscustomobject]@{ Name=$candidateFile.Name; FullName=$candidateFile.FullName; Planned=$false })
+                }
+            }
+            $matches = @($candidates | Where-Object {
+                $name = $_.Name
+                ($patterns | Where-Object { $name -like $_ }).Count -gt 0 -and
+                ($exclusions | Where-Object { $name -like $_ }).Count -eq 0
+            })
+            $matchedTotal += $matches.Count
+            $extension = Get-FEDAUTOOutputExtension -Name $exportName
+            $baseName = Resolve-FEDAUTOOutputBaseName -Name $exportName
+            $plannedPath = Join-Path $folders.OutputFolder ("$baseName$extension")
+            if (-not [string]::IsNullOrWhiteSpace($baseName)) {
+                $plannedOutputs += [pscustomobject]@{ Name="$baseName$extension"; FullName=$plannedPath; Planned=$true }
+            }
+            Add-FEDAUTOPreviewLine -Lines $lines -Text ("- {0}{1}" -f $exportName, $(if ($copyToDestination) { '  [copy to destination]' } else { '' }))
+            Add-FEDAUTOPreviewLine -Lines $lines -Text ("  Reads from: {0}" -f $sourcePath)
+            Add-FEDAUTOPreviewLine -Lines $lines -Text ("  Matches: {0}" -f $matches.Count)
+            foreach ($match in @($matches | Select-Object -First 50)) {
+                $plannedText = if ($match.Planned) { ' [planned output]' } else { '' }
+                Add-FEDAUTOPreviewLine -Lines $lines -Text ("    {0}{1}" -f $match.Name, $plannedText)
+            }
+            if ($matches.Count -gt 50) { Add-FEDAUTOPreviewLine -Lines $lines -Text ("    ... {0} more file(s)" -f ($matches.Count - 50)) }
+            Add-FEDAUTOPreviewLine -Lines $lines -Text ("  Planned output: {0}" -f $plannedPath)
+            Add-FEDAUTOPreviewLine -Lines $lines
+        }
+        if ($enabledCount -eq 0) { Add-FEDAUTOPreviewLine -Lines $lines -Text 'No enabled wildcard rules were found.' }
+        Show-FEDAUTOTextDialog -Title 'Grouping Preview' -Text ($lines -join [Environment]::NewLine)
+        $GroupingPreviewPanel.Background = '#DFF0C8'
+        $GroupingPreviewText.Text = ("Previewed wildcard grouping: {0} enabled rule(s), {1} matched input item(s)." -f $enabledCount, $matchedTotal)
+        $StatusText.Text = $GroupingPreviewText.Text
+        return
+    }
+
+    $candidates = @(Get-FEDAUTOFederationCandidateFiles -Path $folders.InputFolder)
+    $definitions = @(Get-FederationPartDefinitions -FederationRows $federationRows)
+    $groupKeys = @($definitions | Where-Object { $_.GroupOrder -gt 0 } | Sort-Object GroupOrder, SortPosition, RowOrder | Select-Object -ExpandProperty Name -Unique)
+    $matchDefinitions = @($definitions | Where-Object { $_.GroupOrder -gt 0 -and -not $_.IsFileExtension })
+    $rows = @()
+    $unmatched = @()
+    foreach ($file in $candidates) {
+        if (-not (Test-FederationFileNameMatch -FileName $file.Name -PartDefinitions $matchDefinitions)) {
+            $unmatched += $file
+            continue
+        }
+        $parts = @(Split-ModelFileNameParts -FileName $file.Name)
+        $hash = [ordered]@{ FileName=$file.FullName }
+        foreach ($definition in $definitions) {
+            $hash[$definition.Name] = Get-FederationPartValue -FileName $file.Name -Definition $definition -NameParts $parts
+        }
+        $rows += [pscustomobject]$hash
+    }
+    Add-FEDAUTOPreviewLine -Lines $lines -Text ("Supported source files: {0}" -f $candidates.Count)
+    Add-FEDAUTOPreviewLine -Lines $lines -Text ("Matched naming rules: {0}" -f $rows.Count)
+    Add-FEDAUTOPreviewLine -Lines $lines -Text ("Unmatched files: {0}" -f $unmatched.Count)
+    Add-FEDAUTOPreviewLine -Lines $lines -Text ("Grouping fields: {0}" -f $(if ($groupKeys.Count -gt 0) { $groupKeys -join ', ' } else { '[none]' }))
+    Add-FEDAUTOPreviewLine -Lines $lines
+    if ($groupKeys.Count -eq 0) {
+        Add-FEDAUTOPreviewLine -Lines $lines -Text 'WARNING: No Federation rows have GroupOrder > 0.'
+    }
+    elseif ($rows.Count -gt 0) {
+        Add-FEDAUTOPreviewLine -Lines $lines -Text 'Planned grouped NWD outputs:'
+        $nwdNamingMethod = Get-FEDAUTOSettingValueFromRows -Rows $settingsRows -Parameter 'NWDNamingMethod' -DefaultValue 'Full'
+        Add-FEDAUTONamingPreviewNodes -Rows $rows -GroupKeys $groupKeys -NamingMethod $nwdNamingMethod -Lines $lines
+    }
+    if ($unmatched.Count -gt 0) {
+        Add-FEDAUTOPreviewLine -Lines $lines
+        Add-FEDAUTOPreviewLine -Lines $lines -Text 'Unmatched files:'
+        foreach ($file in @($unmatched | Select-Object -First 50)) { Add-FEDAUTOPreviewLine -Lines $lines -Text ("  {0}" -f $file.Name) }
+        if ($unmatched.Count -gt 50) { Add-FEDAUTOPreviewLine -Lines $lines -Text ("  ... {0} more file(s)" -f ($unmatched.Count - 50)) }
+    }
+    Show-FEDAUTOTextDialog -Title 'Grouping Preview' -Text ($lines -join [Environment]::NewLine)
+    $GroupingPreviewPanel.Background = '#DFF0C8'
+    $GroupingPreviewText.Text = ("Previewed naming grouping: {0} matched file(s), {1} unmatched." -f $rows.Count, $unmatched.Count)
+    $StatusText.Text = $GroupingPreviewText.Text
+}
+
 function Show-SettingsEditor {
     $SettingsPanel.Children.Clear()
     $acquisitionState = Get-FEDAUTOAcquisitionState
@@ -1349,7 +1605,7 @@ function Show-SettingsEditor {
             [Windows.Controls.Grid]::SetColumn($holder, 1); [void]$panel.Children.Add($holder)
         }
         elseif ($type -eq 'Choice') {
-            $choices = if ($setting.Parameter -in @('RunProcess','RunFederation','ReviztoPublish')) { @('Yes','No','Force') } else { @('Full','OnlyCodes','OnlyDesc','Codes-Desc') }
+            $choices = if ($setting.Parameter -in @('RunProcess','RunFederation','ReviztoPublish')) { @('Yes','No','Force') } elseif ($setting.Parameter -eq 'NavisworksSavedNwdVersion') { @('Latest','2027','2026','2016-2025') } else { @('Full','OnlyCodes','OnlyDesc','Codes-Desc') }
             $combo = New-Object Windows.Controls.ComboBox -Property @{ ItemsSource = $choices; SelectedItem = $setting.Value; MinWidth = 220 }
             $combo.Tag = $setting; $combo.Add_SelectionChanged({ param($sender, $eventArgs) if ($sender.SelectedItem) { $sender.Tag.Value = $sender.SelectedItem.ToString() } })
             [Windows.Controls.Grid]::SetColumn($combo, 1); [void]$panel.Children.Add($combo)
@@ -1413,7 +1669,7 @@ function Paste-GridData {
         foreach ($column in $columns) {
             $property = $column.SortMemberPath
             if (-not $property) { $property = $column.Header.ToString() }
-            $newRow[$property] = if ($property -in @('Run','SkipIfSame','CheckDateToo','ExportToXLSX','InjectToIFC','ReadFromOutputFolder')) { $false } else { '' }
+            $newRow[$property] = if ($property -in @('Run','SkipIfSame','CheckDateToo','ExportToXLSX','InjectToIFC','ReadFromOutputFolder','CopyToDestination')) { $false } else { '' }
         }
         [void]$Grid.ItemsSource.Add([pscustomobject]$newRow)
     }
@@ -1430,7 +1686,7 @@ function Paste-GridData {
         for ($c = 0; $c -lt $values.Count; $c++) {
             $property = $columns[$targetStartColumn + $c].SortMemberPath
             if (-not $property) { $property = $columns[$targetStartColumn + $c].Header.ToString() }
-            $item.$property = if ($property -in @('Run','SkipIfSame','CheckDateToo','ExportToXLSX','InjectToIFC','ReadFromOutputFolder')) { ConvertTo-FEDAUTOBoolean $values[$c] } else { ConvertTo-FEDAUTOCleanText $values[$c] }
+            $item.$property = if ($property -in @('Run','SkipIfSame','CheckDateToo','ExportToXLSX','InjectToIFC','ReadFromOutputFolder','CopyToDestination')) { ConvertTo-FEDAUTOBoolean $values[$c] } else { ConvertTo-FEDAUTOCleanText $values[$c] }
         }
     }
     # Pasting can run while DataGrid is committing its current edit. Refreshing
@@ -1446,7 +1702,7 @@ function New-FEDAUTOGridRow {
         $property = $column.SortMemberPath
         if (-not $property) { $property = $column.Header.ToString() }
         if ([string]::IsNullOrWhiteSpace($property)) { continue }
-        $row[$property] = if ($property -in @('Run','SkipIfSame','CheckDateToo','ExportToXLSX','InjectToIFC','ReadFromOutputFolder')) { $false } else { '' }
+        $row[$property] = if ($property -in @('Run','SkipIfSame','CheckDateToo','ExportToXLSX','InjectToIFC','ReadFromOutputFolder','CopyToDestination')) { $false } else { '' }
     }
     return [pscustomobject]$row
 }
@@ -1588,13 +1844,17 @@ $FederationGrid.Add_AutoGeneratingColumn({
 })
 $WildcardSelectionGrid.Add_AutoGeneratingColumn({
     param($sender, $eventArgs)
-    if ($eventArgs.PropertyName -in @('Run','ReadFromOutputFolder')) {
+    if ($eventArgs.PropertyName -in @('Run','ReadFromOutputFolder','CopyToDestination')) {
         $column = New-Object Windows.Controls.DataGridCheckBoxColumn
-        $column.Header = $eventArgs.PropertyName
+        $column.Header = New-FEDAUTOColumnHeader -PropertyName $eventArgs.PropertyName
         $column.SortMemberPath = $eventArgs.PropertyName
         if ($eventArgs.PropertyName -eq 'ReadFromOutputFolder') {
-            $column.MinWidth = 190
-            $column.Width = [Windows.Controls.DataGridLength]::new(200)
+            $column.MinWidth = 82
+            $column.Width = [Windows.Controls.DataGridLength]::new(92)
+        }
+        elseif ($eventArgs.PropertyName -eq 'CopyToDestination') {
+            $column.MinWidth = 95
+            $column.Width = [Windows.Controls.DataGridLength]::new(110)
         }
         $binding = New-Object Windows.Data.Binding($eventArgs.PropertyName)
         $binding.Mode = [Windows.Data.BindingMode]::TwoWay
@@ -1646,7 +1906,7 @@ foreach ($grid in $DownloadGrid,$AttributesGrid,$FederationGrid,$WildcardSelecti
 Enable-GridCheckboxSync -Grid $DownloadGrid -BooleanColumns @('Run','SkipIfSame','CheckDateToo')
 Enable-GridCheckboxSync -Grid $AttributesGrid -BooleanColumns @('ExportToXLSX','InjectToIFC')
 Enable-GridCheckboxSync -Grid $FederationGrid -BooleanColumns @('InjectToIFC')
-Enable-GridCheckboxSync -Grid $WildcardSelectionGrid -BooleanColumns @('Run','ReadFromOutputFolder')
+Enable-GridCheckboxSync -Grid $WildcardSelectionGrid -BooleanColumns @('Run','ReadFromOutputFolder','CopyToDestination')
 foreach ($grid in $DownloadGrid,$AttributesGrid,$FederationGrid,$WildcardSelectionGrid,$LookupsGrid) { Enable-FEDAUTOGridValidation $grid }
 $DownloadGrid.Add_CellEditEnding({ param($sender, $eventArgs) [void]$window.Dispatcher.BeginInvoke([Action]{ Show-SettingsEditor }) })
 function Get-FEDAUTOEditorRows {
@@ -1721,9 +1981,9 @@ function Save-FEDAUTOConfiguration {
     $downloadToSave = @(ConvertFrom-GridRows $downloadRowsForSave @('Run','SkipIfSame','CheckDateToo'))
     $attributesToSave = @(ConvertFrom-GridRows $attributeRowsForSave @('ExportToXLSX','InjectToIFC'))
     $federationToSave = @(ConvertFrom-GridRows $federationRowsForSave @('InjectToIFC'))
-    $wildcardSelectionToSave = @(ConvertFrom-GridRows $wildcardSelectionRowsForSave @('Run','ReadFromOutputFolder') | Where-Object {
+    $wildcardSelectionToSave = @(ConvertFrom-GridRows $wildcardSelectionRowsForSave @('Run','ReadFromOutputFolder','CopyToDestination') | Where-Object {
         -not [string]::IsNullOrWhiteSpace($_.Inclusions) -or -not [string]::IsNullOrWhiteSpace($_.Exclusions) -or
-        -not [string]::IsNullOrWhiteSpace($_.ExportFileName) -or $_.Run -eq 'Yes' -or $_.ReadFromOutputFolder -eq 'Yes'
+        -not [string]::IsNullOrWhiteSpace($_.ExportFileName) -or $_.Run -eq 'Yes' -or $_.ReadFromOutputFolder -eq 'Yes' -or $_.CopyToDestination -eq 'Yes'
     })
     $lookupsToSave = @(ConvertFrom-GridRows $lookupRowsForSave)
     if ($settingsToSave.Count -eq 0) { throw 'No settings were collected from the editor; configuration was not changed.' }
@@ -1752,7 +2012,7 @@ function Export-EditorConfigurationToExcel {
         @{ Name='Download'; Table='Download'; Rows=(ConvertFrom-GridRows (Get-FEDAUTOEditorRows -Window $Window -ControlName 'DownloadGrid') @('Run','SkipIfSame','CheckDateToo')) },
         @{ Name='PWAttributesList'; Table='PWAttributesList'; Rows=(ConvertFrom-GridRows (Get-FEDAUTOEditorRows -Window $Window -ControlName 'AttributesGrid') @('ExportToXLSX','InjectToIFC')) },
         @{ Name='Federation'; Table='Federation'; Rows=(ConvertFrom-GridRows (Get-FEDAUTOEditorRows -Window $Window -ControlName 'FederationGrid') @('InjectToIFC')) },
-        @{ Name='WildcardSelection'; Table='WildcardSelection'; Rows=(ConvertFrom-GridRows (Get-FEDAUTOEditorRows -Window $Window -ControlName 'WildcardSelectionGrid') @('Run','ReadFromOutputFolder') | Where-Object { -not [string]::IsNullOrWhiteSpace($_.Inclusions) -or -not [string]::IsNullOrWhiteSpace($_.Exclusions) -or -not [string]::IsNullOrWhiteSpace($_.ExportFileName) -or $_.Run -eq 'Yes' -or $_.ReadFromOutputFolder -eq 'Yes' }) },
+        @{ Name='WildcardSelection'; Table='WildcardSelection'; Rows=(ConvertFrom-GridRows (Get-FEDAUTOEditorRows -Window $Window -ControlName 'WildcardSelectionGrid') @('Run','ReadFromOutputFolder','CopyToDestination') | Where-Object { -not [string]::IsNullOrWhiteSpace($_.Inclusions) -or -not [string]::IsNullOrWhiteSpace($_.Exclusions) -or -not [string]::IsNullOrWhiteSpace($_.ExportFileName) -or $_.Run -eq 'Yes' -or $_.ReadFromOutputFolder -eq 'Yes' -or $_.CopyToDestination -eq 'Yes' }) },
         @{ Name='Lookups'; Table='Lookups'; Rows=(ConvertFrom-GridRows (Get-FEDAUTOEditorRows -Window $Window -ControlName 'LookupsGrid')) }
     )
     if (Test-Path -LiteralPath $path) { Remove-Item -LiteralPath $path -Force }
@@ -1958,6 +2218,11 @@ $PreviewMatchesButton.Add_Click({
     param($sender, $eventArgs)
     try { Show-FEDAUTODownloadMatchPreview -Window ([Windows.Window]::GetWindow($sender)) }
     catch { [System.Windows.MessageBox]::Show($_.Exception.Message, 'Unable to preview download matches') }
+})
+$PreviewGroupingButton.Add_Click({
+    param($sender, $eventArgs)
+    try { Show-FEDAUTOGroupingPreview -Window ([Windows.Window]::GetWindow($sender)) }
+    catch { [System.Windows.MessageBox]::Show(($_.Exception.Message + "`r`n`r`n" + $_.ScriptStackTrace), 'Unable to preview grouping') }
 })
 $ValidateButton.Add_Click({
     param($sender, $eventArgs)

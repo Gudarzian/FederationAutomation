@@ -15,9 +15,11 @@
                      "IncludeUnmatchedFilesInFederatedModel":  null,
                      "FederationInputFolder":  "",
                      "FederationOutputFolder":  "Output",
+                     "DestinationFolder":  "Destination",
                      "FederatedFileName":  "Project Federated.nwd",
                      "NavisworksVersion":  null,
                      "NavisworksConfigXML":  "NavisworksOptions.xml",
+                     "NavisworksSavedNwdVersion":  "Latest",
                      "NavisworksViewsImportXML":  null,
                      "NavisworksVisible":  null,
                      "NWDNamingMethod":  "Full",
@@ -153,14 +155,16 @@
                                   "Inclusions":  "*.ifc,*.dwg,*.dgn,*.rvt,*.nwc",
                                   "Exclusions":  "delete,withdrawn,superseded",
                                   "ExportFileName":  "All Source Models.nwd",
-                                  "ReadFromOutputFolder":  "No"
+                                  "ReadFromOutputFolder":  "No",
+                                  "CopyToDestination":  "No"
                               },
                               {
                                   "Run":  "No",
                                   "Inclusions":  "*.nwd",
                                   "Exclusions":  "",
                                   "ExportFileName":  "Project Federated.nwd",
-                                  "ReadFromOutputFolder":  "Yes"
+                                  "ReadFromOutputFolder":  "Yes",
+                                  "CopyToDestination":  "Yes"
                               }
                           ],
     "lookups":  [

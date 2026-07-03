@@ -1,47 +1,103 @@
 {
     "schemaVersion":  1,
     "settings":  {
-                     "LogFolder":  null,
-                     "SourceFolder":  "SourceFiles",
-                     "AttributesFile":  null,
-                     "RunDownload":  "No",
+                     "LogFolder":  "Logs",
+                     "SourceFolder":  "Downloads",
+                     "AttributesFile":  "PWAttributes.xlsx",
+                     "RunDownload":  "Yes",
                      "SourceAcquisitionMode":  "Auto",
-                     "PWUser":  null,
-                     "PWPass":  null,
+                     "PWUser":  "",
+                     "PWPass":  "",
                      "RunProcess":  "No",
-                     "ProcessedFolder":  null,
-                     "RunFederation":  "No",
-                     "FederationGroupingMethod":  "Naming Convention and Lookups",
-                     "IncludeUnmatchedFilesInFederatedModel":  null,
-                     "FederationInputFolder":  "",
+                     "ProcessedFolder":  "ProcessedIFC",
+                     "RunFederation":  "Force",
+                     "FederationGroupingMethod":  "Wildcard Selection",
+                     "IncludeUnmatchedFilesInFederatedModel":  "Yes",
+                     "FederationInputFolder":  "Downloads",
                      "FederationOutputFolder":  "Output",
+                     "DestinationFolder":  "Destination",
                      "FederatedFileName":  "Project Federated.nwd",
-                     "NavisworksVersion":  null,
+                     "NavisworksVersion":  "",
                      "NavisworksConfigXML":  "NavisworksOptions.xml",
-                     "NavisworksViewsImportXML":  null,
-                     "NavisworksVisible":  null,
-                     "NWDNamingMethod":  "Full",
+                     "NavisworksSavedNwdVersion":  "Latest",
+                     "NavisworksViewsImportXML":  "",
+                     "NavisworksVisible":  "No",
+                     "NWDNamingMethod":  "OnlyDesc",
                      "ReviztoPublish":  "No",
-                     "ReviztoPublishCode":  null,
-                     "ReviztoMaxAgeMinutes":  null
+                     "ReviztoPublishCode":  "",
+                     "ReviztoMaxAgeMinutes":  "60"
                  },
     "download":  [
                      {
-                         "Run":  "No",
-                         "ReadFolder":  "ExampleSourceFiles",
-                         "FileFilter":  "*.ifc,*.dwg,*.dgn,*.rvt,*.nwc",
-                         "Exclude":  "delete,withdrawn,superseded",
+                         "Run":  "Yes",
+                         "ReadFolder":  "C:\\Users\\GoodyGudarzian\\DC\\ACCDocs\\DTI (AUS Server)\\Marinus Link\\Project Files\\01 WIP\\19-EX\\HAZ - Hazelwood\\HAT_Hatch\\Models - Hatch",
+                         "FileFilter":  "*arc*.ifc",
+                         "Exclude":  "delete,Delete,WITHDRAWN",
                          "SkipIfSame":  "Yes",
                          "CheckDateToo":  "Yes",
                          "MinState":  ""
                      },
                      {
                          "Run":  "No",
-                         "ReadFolder":  "pw://server:datasource/Documents/Project/Models",
-                         "FileFilter":  "*.ifc,*.nwc",
-                         "Exclude":  "delete,withdrawn,superseded",
-                         "SkipIfSame":  "Yes",
-                         "CheckDateToo":  "Yes",
+                         "ReadFolder":  "",
+                         "FileFilter":  "",
+                         "Exclude":  "",
+                         "SkipIfSame":  "No",
+                         "CheckDateToo":  "No",
+                         "MinState":  ""
+                     },
+                     {
+                         "Run":  "No",
+                         "ReadFolder":  "",
+                         "FileFilter":  "",
+                         "Exclude":  "",
+                         "SkipIfSame":  "No",
+                         "CheckDateToo":  "No",
+                         "MinState":  ""
+                     },
+                     {
+                         "Run":  "No",
+                         "ReadFolder":  "",
+                         "FileFilter":  "",
+                         "Exclude":  "",
+                         "SkipIfSame":  "No",
+                         "CheckDateToo":  "No",
+                         "MinState":  ""
+                     },
+                     {
+                         "Run":  "No",
+                         "ReadFolder":  "",
+                         "FileFilter":  "",
+                         "Exclude":  "",
+                         "SkipIfSame":  "No",
+                         "CheckDateToo":  "No",
+                         "MinState":  ""
+                     },
+                     {
+                         "Run":  "No",
+                         "ReadFolder":  "",
+                         "FileFilter":  "",
+                         "Exclude":  "",
+                         "SkipIfSame":  "No",
+                         "CheckDateToo":  "No",
+                         "MinState":  ""
+                     },
+                     {
+                         "Run":  "No",
+                         "ReadFolder":  "",
+                         "FileFilter":  "",
+                         "Exclude":  "",
+                         "SkipIfSame":  "No",
+                         "CheckDateToo":  "No",
+                         "MinState":  ""
+                     },
+                     {
+                         "Run":  "No",
+                         "ReadFolder":  "",
+                         "FileFilter":  "",
+                         "Exclude":  "",
+                         "SkipIfSame":  "No",
+                         "CheckDateToo":  "No",
                          "MinState":  ""
                      }
                  ],
@@ -60,139 +116,222 @@
                              },
                              {
                                  "AttributeName":  "Description",
-                                 "OutputName":  "Description",
+                                 "OutputName":  "PW_Description",
                                  "ExportToXLSX":  "Yes",
+                                 "InjectToIFC":  "Yes"
+                             },
+                             {
+                                 "AttributeName":  "DocumentStatus",
+                                 "OutputName":  "PW_STatus",
+                                 "ExportToXLSX":  "No",
                                  "InjectToIFC":  "Yes"
                              },
                              {
                                  "AttributeName":  "FileSize",
-                                 "OutputName":  "File_Size",
+                                 "OutputName":  "PW_File_Size",
                                  "ExportToXLSX":  "Yes",
                                  "InjectToIFC":  "Yes"
                              },
                              {
-                                 "AttributeName":  "FileUpdateDate",
-                                 "OutputName":  "File_Update_Date",
+                                 "AttributeName":  "Version",
+                                 "OutputName":  "PW_Document_Versoin",
+                                 "ExportToXLSX":  "Yes",
+                                 "InjectToIFC":  "No"
+                             },
+                             {
+                                 "AttributeName":  "DocumentCreatorName",
+                                 "OutputName":  "PW_Created_By",
+                                 "ExportToXLSX":  "Yes",
+                                 "InjectToIFC":  "No"
+                             },
+                             {
+                                 "AttributeName":  "CreateDate",
+                                 "OutputName":  "PW_Creation_Time",
+                                 "ExportToXLSX":  "Yes",
+                                 "InjectToIFC":  "No"
+                             },
+                             {
+                                 "AttributeName":  "DocumentUpdater.Email",
+                                 "OutputName":  "PW_Updated_By",
                                  "ExportToXLSX":  "Yes",
                                  "InjectToIFC":  "Yes"
                              },
                              {
                                  "AttributeName":  "DocumentGUID",
-                                 "OutputName":  "Document_GUID",
+                                 "OutputName":  "PW_Doc_GUID",
                                  "ExportToXLSX":  "Yes",
                                  "InjectToIFC":  "No"
                              },
                              {
+                                 "AttributeName":  "DocumentURN",
+                                 "OutputName":  "PW_Doc_URN",
+                                 "ExportToXLSX":  "Yes",
+                                 "InjectToIFC":  "Yes"
+                             },
+                             {
+                                 "AttributeName":  "FileUpdater.Email",
+                                 "OutputName":  "File_UpdaterEmail",
+                                 "ExportToXLSX":  "Yes",
+                                 "InjectToIFC":  "Yes"
+                             },
+                             {
+                                 "AttributeName":  "FileUpdateDate",
+                                 "OutputName":  "File_UpdateDate",
+                                 "ExportToXLSX":  "Yes",
+                                 "InjectToIFC":  "Yes"
+                             },
+                             {
+                                 "AttributeName":  "doc.DocumentUpdateDate",
+                                 "OutputName":  "PW_Doc_Modification_Time",
+                                 "ExportToXLSX":  "Yes",
+                                 "InjectToIFC":  "Yes"
+                             },
+                             {
+                                 "AttributeName":  "VersionSequence",
+                                 "OutputName":  "VersionSequence",
+                                 "ExportToXLSX":  "Yes",
+                                 "InjectToIFC":  "Yes"
+                             },
+                             {
                                  "AttributeName":  "WorkflowState",
-                                 "OutputName":  "Workflow_State",
+                                 "OutputName":  "WorkflowState",
                                  "ExportToXLSX":  "No",
                                  "InjectToIFC":  "No"
+                             },
+                             {
+                                 "AttributeName":  "CustomAttributes.INFO_DC_PROJECT_STAGE",
+                                 "OutputName":  "PROJECT_STAGE",
+                                 "ExportToXLSX":  "No",
+                                 "InjectToIFC":  "No"
+                             },
+                             {
+                                 "AttributeName":  "CustomAttributes.WRE_OPERATION",
+                                 "OutputName":  "WRE_OPERATION",
+                                 "ExportToXLSX":  "No",
+                                 "InjectToIFC":  "No"
+                             },
+                             {
+                                 "AttributeName":  "CustomAttributes.TB_LINE_DISCIPLINE",
+                                 "OutputName":  "TB_LINE_DISCIPLINE",
+                                 "ExportToXLSX":  "No",
+                                 "InjectToIFC":  "No"
+                             },
+                             {
+                                 "AttributeName":  "CustomAttributes.TB_DISCIPLIN",
+                                 "OutputName":  "TB_DISCIPLIN",
+                                 "ExportToXLSX":  "No",
+                                 "InjectToIFC":  "No"
+                             },
+                             {
+                                 "AttributeName":  "CustomAttributes.DC_SUB_DISCIPLINE",
+                                 "OutputName":  "DC_SUB_DISCIPLINE",
+                                 "ExportToXLSX":  "No",
+                                 "InjectToIFC":  "No"
+                             },
+                             {
+                                 "AttributeName":  "CustomAttributes.PW_PACKAGE_NO",
+                                 "OutputName":  "PW_PACKAGE_NO",
+                                 "ExportToXLSX":  "No",
+                                 "InjectToIFC":  "No"
+                             },
+                             {
+                                 "AttributeName":  "CustomAttributes.INFO_TB_SUITABILITY",
+                                 "OutputName":  "INFO_TB_SUITABILITY",
+                                 "ExportToXLSX":  "No",
+                                 "InjectToIFC":  "No"
+                             },
+                             {
+                                 "AttributeName":  "CustomAttributes.TB_SUITABILITY",
+                                 "OutputName":  "TB_SUITABILITY",
+                                 "ExportToXLSX":  "No",
+                                 "InjectToIFC":  "No"
+                             },
+                             {
+                                 "AttributeName":  "CustomAttributes.TB_STATUS",
+                                 "OutputName":  "TB_STATUS",
+                                 "ExportToXLSX":  "No",
+                                 "InjectToIFC":  "No"
+                             },
+                             {
+                                 "AttributeName":  "CustomAttributes.INFO_TB_STATUS",
+                                 "OutputName":  "INFO_TB_STATUS",
+                                 "ExportToXLSX":  "Yes",
+                                 "InjectToIFC":  "Yes"
                              }
                          ],
     "federation":  [
                        {
-                           "FieldNames":  "Project",
+                           "FieldNames":  "Site",
                            "Filename-Part":  "1",
                            "GroupOrder":  "0",
-                           "Description":  "Project or asset code",
-                           "InjectToIFC":  "Yes"
+                           "Description":  "Site",
+                           "InjectToIFC":  "No"
                        },
                        {
                            "FieldNames":  "Originator",
                            "Filename-Part":  "2",
-                           "GroupOrder":  "0",
-                           "Description":  "Authoring organisation",
-                           "InjectToIFC":  "Yes"
-                       },
-                       {
-                           "FieldNames":  "Volume",
-                           "Filename-Part":  "3",
                            "GroupOrder":  "1",
-                           "Description":  "Volume, zone, or area",
-                           "InjectToIFC":  "Yes"
+                           "Description":  "Originator",
+                           "InjectToIFC":  "No"
                        },
                        {
-                           "FieldNames":  "Level",
+                           "FieldNames":  "Zone",
+                           "Filename-Part":  "3",
+                           "GroupOrder":  "0",
+                           "Description":  "Zone",
+                           "InjectToIFC":  "No"
+                       },
+                       {
+                           "FieldNames":  "Stage",
                            "Filename-Part":  "4",
-                           "GroupOrder":  "2",
-                           "Description":  "Level or location",
-                           "InjectToIFC":  "Yes"
+                           "GroupOrder":  "0",
+                           "Description":  "Stage",
+                           "InjectToIFC":  "No"
                        },
                        {
-                           "FieldNames":  "Type",
+                           "FieldNames":  "File Type",
                            "Filename-Part":  "5",
                            "GroupOrder":  "0",
-                           "Description":  "Document or model type",
-                           "InjectToIFC":  "Yes"
+                           "Description":  "File Type",
+                           "InjectToIFC":  "No"
                        },
                        {
-                           "FieldNames":  "Discipline",
+                           "FieldNames":  "Discipline/Sub",
                            "Filename-Part":  "6",
-                           "GroupOrder":  "3",
-                           "Description":  "Design discipline",
-                           "InjectToIFC":  "Yes"
+                           "GroupOrder":  "2",
+                           "Description":  "Discipline/Sub",
+                           "InjectToIFC":  "No"
                        },
                        {
-                           "FieldNames":  "Number",
+                           "FieldNames":  "SequenceNumber",
                            "Filename-Part":  "7",
                            "GroupOrder":  "0",
-                           "Description":  "Sequence number",
-                           "InjectToIFC":  "Yes"
+                           "Description":  "SequenceNumber",
+                           "InjectToIFC":  "No"
                        },
                        {
                            "FieldNames":  "FileExtension",
                            "Filename-Part":  "FileExtension",
-                           "GroupOrder":  "4",
-                           "Description":  "Source file extension",
+                           "GroupOrder":  "0",
+                           "Description":  "FileExtension",
                            "InjectToIFC":  "No"
                        }
                    ],
     "wildcardSelection":  [
                               {
-                                  "Run":  "No",
-                                  "Inclusions":  "*.ifc,*.dwg,*.dgn,*.rvt,*.nwc",
-                                  "Exclusions":  "delete,withdrawn,superseded",
-                                  "ExportFileName":  "All Source Models.nwd",
-                                  "ReadFromOutputFolder":  "No"
-                              },
-                              {
-                                  "Run":  "No",
-                                  "Inclusions":  "*.nwd",
+                                  "Run":  "Yes",
+                                  "Inclusions":  "*",
                                   "Exclusions":  "",
-                                  "ExportFileName":  "Project Federated.nwd",
-                                  "ReadFromOutputFolder":  "Yes"
+                                  "ExportFileName":  "LCC.nwf",
+                                  "ReadFromOutputFolder":  "No",
+                                  "CopyToDestination":  "No"
                               }
                           ],
     "lookups":  [
                     {
-                        "Filename-Part":  "Discipline",
-                        "Code":  "ARC",
-                        "Description":  "Architecture"
-                    },
-                    {
-                        "Filename-Part":  "Discipline",
-                        "Code":  "STR",
-                        "Description":  "Structures"
-                    },
-                    {
-                        "Filename-Part":  "Discipline",
-                        "Code":  "MEP",
-                        "Description":  "Building services"
-                    },
-                    {
-                        "Filename-Part":  "Discipline",
-                        "Code":  "CIV",
-                        "Description":  "Civil"
-                    },
-                    {
-                        "Filename-Part":  "Level",
-                        "Code":  "L00",
-                        "Description":  "Ground level"
-                    },
-                    {
-                        "Filename-Part":  "Level",
-                        "Code":  "L01",
-                        "Description":  "Level 1"
+                        "Filename-Part":  "",
+                        "Code":  "",
+                        "Description":  ""
                     }
                 ]
 }

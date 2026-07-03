@@ -134,7 +134,7 @@ When the EXE starts, it first works from its own folder, then sets the current p
   - Checkbox columns use compact widths. Hover over column headers for guidance, including wildcard and comma-separated filter examples.
   - Type into the blank row at the bottom to add one row.
   - To add several rows, copy tab-separated rows from Excel, select the first destination cell, and press `Ctrl+V`. The GUI adds required rows automatically.
-- **Grouping** contains the grouping-method selector. It shows the filename-part `Federation` table for Naming Convention and Lookups, or the `WildcardSelection` table for Wildcard Selection. Method-specific settings are shown above the active table.
+- **Grouping** contains the grouping-method selector. It shows the filename-part `Federation` table for Naming Convention and Lookups, or the `WildcardSelection` table for Wildcard Selection. Method-specific settings are shown above the active table. Use **Preview Grouping** to inspect naming-rule matches, grouped outputs, wildcard rule matches, and destination-copy selections before running Navisworks.
 - **Run** saves the configuration, starts the pipeline without showing a separate terminal window, and displays live output. It also shows a progress bar, bold top-level stage, and current detailed activity.
 
 Use **Save** to keep configuration changes without running the process, or **Save and Run** to save and begin a run immediately.
@@ -242,6 +242,10 @@ Path and file keywords and assumptions:
       - `C:\Users\other\OneDrive\...` -> current `OneDrive\...`
       - `C:\Users\other\DC\ACCDocs\...` -> current `DC\ACCDocs\...`
       - `C:\Users\other\<CompanySyncRoot>\...` -> current company sync root derived from `OneDriveCommercial`
+- `DestinationFolder`: clean handover folder for selected Wildcard Selection outputs (default `Destination`).
+  - Intermediate NWD/NWF files remain in `FederationOutputFolder`
+  - Only wildcard rows with `CopyToDestination` enabled are copied here after federation finishes
+  - If the destination folder cannot be created or written to, or an existing destination file is locked, the federation stage reports an error instead of silently skipping the copy
 - File-name parameters:
   - `AttributesFile`: name of the Excel workbook that stores the staged source metadata snapshot (`Attributes` table) used by the process stage for IFC attribute injection; written under `SourceFolder`.
 - `FederatedFileName`: name of the final federated Navisworks model produced by the federation stage; written under `FederationOutputFolder` and used as the publish source for Revizto.
@@ -282,6 +286,14 @@ Other important keywords:
   - If specified but not installed, fallback to highest installed version.
 - `NavisworksConfigXML`
   - Defaults to `NavisworksOptions.xml` when blank.
+- `NavisworksSavedNwdVersion`
+  - Purpose: controls the NWD file version written by Navisworks.
+  - Choices: `Latest`, `2027`, `2026`, `2016-2025`
+  - Default: `Latest`
+  - The setting is applied by copying `NavisworksConfigXML` to a temporary XML file, updating Navisworks' hidden NWD save-version option in that temporary copy, and passing the temporary file to Navisworks.
+  - The configured/user-created XML is not modified.
+  - If `Latest` is selected and no options XML is available, Navisworks uses its own latest/default save behavior.
+  - If an older target such as `2026` or `2016-2025` is selected, an options XML must be available; otherwise the federation stage is skipped with a clear warning.
 - `NavisworksViewsImportXML`
   - Purpose: optionally imports a Navisworks viewpoints XML file into the final federated NWD.
   - Blank/missing -> ignored
@@ -482,6 +494,7 @@ Expected columns:
 - `Exclusions`
 - `ExportFileName`
 - `ReadFromOutputFolder`
+- `CopyToDestination`
 
 How each row works:
 
@@ -494,16 +507,17 @@ How each row works:
   - If no Navisworks extension is supplied, `.nwd` is added automatically.
   - Each row must have a unique output base name; duplicate names stop the federation to prevent an earlier output from being overwritten.
 - `ReadFromOutputFolder` is `No` for source-model rules and `Yes` when the rule should read NWDs already created in `FederationOutputFolder`.
+- `CopyToDestination` copies the created output file to `DestinationFolder` after all wildcard outputs are created. Use this for final or handover models that should be separated from intermediate federation outputs.
 
 There is no separate final-model checkbox or `FederatedFileName` step in this mode. To create a top-level model, add a later row that reads from the output folder and includes exactly the earlier NWDs you want. The last successfully created wildcard output is treated as the latest top-level result for run-state and optional Revizto publishing.
 
 Example hierarchy:
 
-| Run | Inclusions | Exclusions | ExportFileName | ReadFromOutputFolder |
-| --- | --- | --- | --- | --- |
-| Yes | `PRJ*ARC*.ifc` |  | `Architecture.nwd` | No |
-| Yes | `PRJ*MEP*.ifc` |  | `MEP.nwd` | No |
-| Yes | `Architecture.nwd,MEP.nwd` |  | `Project Federated.nwd` | Yes |
+| Run | Inclusions | Exclusions | ExportFileName | ReadFromOutputFolder | CopyToDestination |
+| --- | --- | --- | --- | --- | --- |
+| Yes | `PRJ*ARC*.ifc` |  | `Architecture.nwd` | No | No |
+| Yes | `PRJ*MEP*.ifc` |  | `MEP.nwd` | No | No |
+| Yes | `Architecture.nwd,MEP.nwd` |  | `Project Federated.nwd` | Yes | Yes |
 
 Rules with `Run=No` are ignored. Rules with no matches write a warning and are skipped. Federation stops only when no enabled wildcard rule creates an NWD. A rule never includes its own output file.
 
@@ -701,6 +715,8 @@ How it works:
 - NWC files are accepted, but generated cache files are skipped when the matching source model is present in the same folder. For example, `Model.nwc` or `Model.ifc.nwc` is skipped when `Model.ifc` is also present.
 - **Naming Convention and Lookups** uses `Federation` filename-part rules, optional `Lookups`, bottom-up grouping, `NWDNamingMethod`, and the optional unmatched-files NWD.
 - **Wildcard Selection** evaluates the `WildcardSelection` rules in row order. Source rules read supported model files, including standalone NWC files after generated-cache filtering. Output-folder rules read prior Navisworks outputs and can form higher-level models.
+- In Wildcard Selection, outputs are created in `FederationOutputFolder`; rows with `CopyToDestination` enabled are then copied to `DestinationFolder`.
+- The Grouping tab's **Preview Grouping** button previews both grouping methods without launching Navisworks or creating files.
 - A wildcard row with no matches is warned and skipped. Duplicate wildcard `ExportFileName` base names stop the stage rather than overwrite an output.
 - Wildcard Selection creates only the outputs specified by its rules; create the top-level federation explicitly as a final output-folder rule. A wildcard output is NWF only when that row's `ExportFileName` ends with `.nwf`; otherwise it defaults to NWD.
 
@@ -737,6 +753,8 @@ Key rules for this stage:
 - Navisworks handling:
   - If the requested version is not installed, the script tries the highest installed version.
   - If no Navisworks installation is found, the federation stage is skipped.
+  - `NavisworksSavedNwdVersion` patches only a temporary copy of `NavisworksConfigXML`; the source XML remains unchanged and the temporary copy is removed when the federation stage ends.
+  - For Navisworks Manage 2027, the save-version mapping is `Latest/2027`, `2026`, and `2016-2025`.
 - Output safety checks:
   - no supported federation files found -> stage stops
   - grouped NWD naming collision -> stage stops

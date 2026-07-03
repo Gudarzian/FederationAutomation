@@ -293,6 +293,178 @@ Finds the highest installed Navisworks Manage version (year) from Program Files.
     return $null
 }
 
+function Resolve-NavisworksOptionsPath {
+    [CmdletBinding()]
+    param(
+        [string]$Value,
+        [string]$BasePath
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Value)) { return $null }
+    $candidate = $Value
+    if (-not [System.IO.Path]::IsPathRooted($candidate)) {
+        $root = if ($BasePath) { $BasePath } else { $PSScriptRoot }
+        $candidate = Join-Path $root $candidate
+    }
+    if (Test-Path -LiteralPath $candidate -PathType Leaf) { return $candidate }
+
+    $root = if ($BasePath) { $BasePath } else { $PSScriptRoot }
+    $resolved = Resolve-SupportFile -FileName $Value -BasePath $root
+    if ($resolved -and (Test-Path -LiteralPath $resolved -PathType Leaf)) { return $resolved }
+    return $null
+}
+
+function Resolve-NavisworksSavedNwdVersion {
+<#
+Maps the GUI save-version choice to Navisworks' hidden NWD XML enum.
+For Navisworks 2027 this is: 0=2027, 1=2026, 2=2016-2025.
+#>
+    [CmdletBinding()]
+    param(
+        [string]$Value,
+        [string]$NavisworksVersion
+    )
+
+    $requested = Normalize-ExcelText -Text $Value
+    if ([string]::IsNullOrWhiteSpace($requested)) { $requested = 'Latest' }
+    $navVersionNumber = 0
+    [void][int]::TryParse((Normalize-ExcelText -Text $NavisworksVersion), [ref]$navVersionNumber)
+    $latestLabel = if ($navVersionNumber -gt 0) { $navVersionNumber.ToString() } else { 'Latest' }
+
+    if ($requested -eq 'Latest') {
+        return [pscustomobject]@{ Requested='Latest'; DisplayValue=$latestLabel; InternalValue=0; IsLatest=$true }
+    }
+    if ($requested -eq '2016-2025') {
+        $bucketValue = if ($navVersionNumber -ge 2027) { 2 } else { 1 }
+        return [pscustomobject]@{ Requested=$requested; DisplayValue='2016-2025'; InternalValue=$bucketValue; IsLatest=$false }
+    }
+
+    $requestedNumber = 0
+    if (-not [int]::TryParse($requested, [ref]$requestedNumber)) {
+        throw "Invalid NavisworksSavedNwdVersion '$requested'. Use Latest, 2027, 2026, or 2016-2025."
+    }
+    if ($navVersionNumber -gt 0 -and $requestedNumber -gt $navVersionNumber) {
+        throw "NavisworksSavedNwdVersion '$requested' is newer than Navisworks Manage $NavisworksVersion and cannot be saved by this installation."
+    }
+    $enumValue = 0
+    if ($navVersionNumber -gt 0) {
+        $enumValue = $navVersionNumber - $requestedNumber
+        if ($enumValue -lt 0 -or $enumValue -gt 1) {
+            throw "NavisworksSavedNwdVersion '$requested' is not available from Navisworks Manage $NavisworksVersion. Use Latest, $NavisworksVersion, $($navVersionNumber - 1), or 2016-2025."
+        }
+    }
+    return [pscustomobject]@{ Requested=$requested; DisplayValue=$requested; InternalValue=$enumValue; IsLatest=$false }
+}
+
+function New-NavisworksTemporaryOptionsPath {
+    [CmdletBinding()]
+    param([Parameter(Mandatory = $true)][string]$SourcePath)
+
+    if (-not (Test-Path -LiteralPath $SourcePath -PathType Leaf)) {
+        throw "Navisworks options XML not found: '$SourcePath'. Choose 'Latest' or provide an XML file so the hidden NWD save-version option can be patched."
+    }
+
+    $tempRoot = Join-Path $env:TEMP 'FederationAutomation'
+    if (-not (Test-Path -LiteralPath $tempRoot -PathType Container)) {
+        New-Item -Path $tempRoot -ItemType Directory -Force | Out-Null
+    }
+    $tempPath = Join-Path $tempRoot ("NavisworksOptions-{0}.xml" -f ([guid]::NewGuid().ToString('N')))
+    Copy-Item -LiteralPath $SourcePath -Destination $tempPath -Force
+    return $tempPath
+}
+
+function Set-NavisworksOptionsNwdVersion {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)][string]$OptionsPath,
+        [Parameter(Mandatory = $true)]$VersionOption
+    )
+
+    if (-not (Test-Path -LiteralPath $OptionsPath -PathType Leaf)) {
+        throw "Navisworks options XML not found: '$OptionsPath'. Choose 'Latest' or provide an XML file so the hidden NWD save-version option can be patched."
+    }
+
+    try { [xml]$doc = Get-Content -LiteralPath $OptionsPath -Raw -ErrorAction Stop }
+    catch { throw "Navisworks options XML could not be loaded: '$OptionsPath'. $($_.Exception.Message)" }
+
+    $node = $doc.SelectSingleNode('//optionset[@name="nwd"]/option[@name="default_format"]/data/name')
+    if (-not $node) {
+        throw "Navisworks options XML '$OptionsPath' does not contain the hidden NWD default_format option."
+    }
+
+    $node.SetAttribute('internal', ("lcop_nwd_version:{0}" -f $VersionOption.InternalValue))
+    $node.InnerText = $VersionOption.DisplayValue
+    $doc.Save($OptionsPath)
+    return $OptionsPath
+}
+
+function Remove-NavisworksTemporaryOptionsPath {
+    [CmdletBinding()]
+    param([string]$Path)
+
+    if ([string]::IsNullOrWhiteSpace($Path)) { return }
+    try {
+        $tempRoot = [System.IO.Path]::GetFullPath((Join-Path $env:TEMP 'FederationAutomation')).TrimEnd('\')
+        $target = [System.IO.Path]::GetFullPath($Path)
+        if ($target.StartsWith($tempRoot + '\', [System.StringComparison]::OrdinalIgnoreCase) -and
+            (Test-Path -LiteralPath $target -PathType Leaf)) {
+            Remove-Item -LiteralPath $target -Force -ErrorAction Stop
+        }
+    }
+    catch {
+        Write-Warning "Could not remove temporary Navisworks options XML '$Path'. $_"
+    }
+}
+
+function Copy-WildcardOutputsToDestination {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)][array]$CopyRequests,
+        [Parameter(Mandatory = $true)][string]$DestinationFolder,
+        [Parameter(Mandatory = $true)][array]$Settings,
+        [string]$LogsFolder,
+        [string]$BasePath
+    )
+
+    if ($CopyRequests.Count -eq 0) { return @() }
+    if ([string]::IsNullOrWhiteSpace($DestinationFolder)) {
+        throw "DestinationFolder is required because at least one wildcard rule has CopyToDestination enabled."
+    }
+
+    try {
+        if (-not (Test-Path -LiteralPath $DestinationFolder -PathType Container)) {
+            New-Item -Path $DestinationFolder -ItemType Directory -Force -ErrorAction Stop | Out-Null
+        }
+        $probePath = Join-Path $DestinationFolder ('.federation-destination-write-test-{0}.tmp' -f ([guid]::NewGuid().ToString('N')))
+        [IO.File]::WriteAllText($probePath, 'test')
+        Remove-Item -LiteralPath $probePath -Force -ErrorAction Stop
+    }
+    catch {
+        $message = "Destination folder '$DestinationFolder' is not writable or could not be created. It may be locked or unavailable. $($_.Exception.Message)"
+        Write-Log -Message $message -Color 'Red' -Settings $Settings -LogsFolderOverride $LogsFolder -BasePath $BasePath
+        throw $message
+    }
+
+    $copyResults = @()
+    foreach ($request in $CopyRequests) {
+        $sourcePath = $request.SourcePath
+        $destinationPath = Join-Path $DestinationFolder ([IO.Path]::GetFileName($sourcePath))
+        try {
+            Copy-Item -LiteralPath $sourcePath -Destination $destinationPath -Force -ErrorAction Stop
+            $message = "Copied wildcard output to destination: '$destinationPath'"
+            Write-Host $message -ForegroundColor Green
+            Write-Log -Message $message -Color 'Green' -Settings $Settings -LogsFolderOverride $LogsFolder -BasePath $BasePath -NoConsole
+            $copyResults += [pscustomobject]@{ Rule=$request.Rule; SourcePath=$sourcePath; DestinationPath=$destinationPath; Status='Copied' }
+        }
+        catch {
+            $message = "Failed to copy wildcard output '$sourcePath' to destination '$destinationPath'. The destination file or folder may be locked. $($_.Exception.Message)"
+            Write-Log -Message $message -Color 'Red' -Settings $Settings -LogsFolderOverride $LogsFolder -BasePath $BasePath
+            throw $message
+        }
+    }
+    return @($copyResults)
+}
+
 if (-not (Get-Variable -Name PWAttributeDefinitions -Scope Script -ErrorAction SilentlyContinue)) {
     $script:PWAttributeDefinitions = @()
 }
@@ -342,15 +514,7 @@ Creates a Navisworks model from a group node.
         $optionsPath = $NavisworksOptions
     }
     if ($optionsPath) {
-        if (-not [System.IO.Path]::IsPathRooted($optionsPath)) {
-            $root = if ($BasePath) { $BasePath } else { $PSScriptRoot }
-            $optionsPath = Join-Path $root $optionsPath
-        }
-        if (-not (Test-Path $optionsPath)) {
-            $root = if ($BasePath) { $BasePath } else { $PSScriptRoot }
-            $resolved = Resolve-SupportFile -FileName $optionsPath -BasePath $root
-            if (Test-Path $resolved) { $optionsPath = $resolved } else { $optionsPath = $null }
-        }
+        $optionsPath = Resolve-NavisworksOptionsPath -Value $optionsPath -BasePath $BasePath
     }
     if (-not $optionsPath) {
         $root = if ($BasePath) { $BasePath } else { $PSScriptRoot }
@@ -518,6 +682,11 @@ Groups IFCs and federates them into Navisworks outputs.
     $logInfo = Get-LogFilePath -LogsFolder $LogsFolder -BaseName 'PW_Process.log.txt'
     $LogFilePath = $logInfo.Path
     $TranscriptStarted = $false
+    $TemporaryNavisworksOptionsPath = $null
+    trap {
+        Remove-NavisworksTemporaryOptionsPath -Path $TemporaryNavisworksOptionsPath
+        throw
+    }
     if (-not $global:MainTranscriptActive) {
         try {
             Initialize-LogFileTarget -LogInfo $logInfo
@@ -581,8 +750,11 @@ Groups IFCs and federates them into Navisworks outputs.
     }
     $OutputPath          = CureFolderPath ($ConfigSettings | Where-Object { $_.Parameter -eq "FederationOutputFolder" }  | Select-Object -ExpandProperty Value)
     if ([string]::IsNullOrWhiteSpace($OutputPath)) { $OutputPath = "Output" }
+    $DestinationFolder   = CureFolderPath ($ConfigSettings | Where-Object { $_.Parameter -eq "DestinationFolder" } | Select-Object -ExpandProperty Value)
+    if ([string]::IsNullOrWhiteSpace($DestinationFolder)) { $DestinationFolder = "Destination" }
     $InputFolderPath = Resolve-RelativePath -PathValue $InputFolderPath -Root $basePath
     $OutputPath = Resolve-RelativePath -PathValue $OutputPath -Root $basePath
+    $DestinationFolder = Resolve-RelativePath -PathValue $DestinationFolder -Root $basePath
     if (-not (Test-Path $InputFolderPath -PathType Container)) {
         $message = "Federation input folder not found: '$InputFolderPath'."
         Write-Log -Message $message -Color 'Red' -Settings $ConfigSettings -LogsFolderOverride $LogsFolder -BasePath $basePath
@@ -604,6 +776,10 @@ Groups IFCs and federates them into Navisworks outputs.
     $NavisworksOptions   = $ConfigSettings | Where-Object { $_.Parameter -eq "NavisworksConfigXML" }  | Select-Object -ExpandProperty Value
     if ([string]::IsNullOrWhiteSpace($NavisworksOptions)) {
         $NavisworksOptions = "NavisworksOptions.xml"
+    }
+    $NavisworksSavedNwdVersion = $ConfigSettings | Where-Object { $_.Parameter -eq "NavisworksSavedNwdVersion" } | Select-Object -ExpandProperty Value -First 1
+    if ([string]::IsNullOrWhiteSpace($NavisworksSavedNwdVersion)) {
+        $NavisworksSavedNwdVersion = "Latest"
     }
     $NavisworksViewsImportXmlPath = $null
     $navisworksViewsImportSetting = $ConfigSettings | Where-Object {
@@ -693,6 +869,7 @@ Groups IFCs and federates them into Navisworks outputs.
     $OutputSheet = "GroupedResults"
     Write-Host "Input folder: $InputFolderPath"
     Write-Host "Output folder: $OutputPath"
+    Write-Host "Destination folder: $DestinationFolder"
     Write-Host "Navisworks version: $NavisworksVersion"
     $navisworksDir = Resolve-NavisworksInstallPath -Version $NavisworksVersion
     if ($navisworksProvided -and -not $navisworksDir) {
@@ -720,7 +897,28 @@ Groups IFCs and federates them into Navisworks outputs.
         }
         return
     }
+    $nwdSaveVersionOption = Resolve-NavisworksSavedNwdVersion -Value $NavisworksSavedNwdVersion -NavisworksVersion $NavisworksVersion
+    $resolvedOptionsPath = Resolve-NavisworksOptionsPath -Value $NavisworksOptions -BasePath $basePath
+    if (-not $resolvedOptionsPath -and -not $nwdSaveVersionOption.IsLatest) {
+        $reason = "NavisworksSavedNwdVersion '$($nwdSaveVersionOption.Requested)' requires a Navisworks options XML, but '$NavisworksOptions' was not found."
+        Write-Host ("Federation skipped: {0}" -f $reason) -ForegroundColor Yellow
+        Write-Log -Message ("Federation skipped: {0}" -f $reason) -Color 'Yellow' -Settings $ConfigSettings -LogsFolderOverride $LogsFolder -BasePath $basePath
+        if ($TranscriptStarted) {
+            Stop-Transcript | Out-Null
+            $global:MainTranscriptActive = $false
+        }
+        return
+    }
+    if ($resolvedOptionsPath) {
+        $TemporaryNavisworksOptionsPath = New-NavisworksTemporaryOptionsPath -SourcePath $resolvedOptionsPath
+        $NavisworksOptions = Set-NavisworksOptionsNwdVersion -OptionsPath $TemporaryNavisworksOptionsPath -VersionOption $nwdSaveVersionOption
+    }
     Write-Host "Navisworks options: $NavisworksOptions"
+    if ($resolvedOptionsPath -and $TemporaryNavisworksOptionsPath) {
+        Write-Host "Original Navisworks options XML preserved: $resolvedOptionsPath"
+        Write-Host "Temporary Navisworks options XML: $TemporaryNavisworksOptionsPath"
+    }
+    Write-Host "Saved NWD version: $($nwdSaveVersionOption.Requested) ($($nwdSaveVersionOption.DisplayValue))"
     if ($NavisworksViewsImportXmlPath) {
         Write-Host "Navisworks viewpoints import XML (final model only): $NavisworksViewsImportXmlPath"
     }
@@ -755,6 +953,7 @@ Groups IFCs and federates them into Navisworks outputs.
             Write-Host ("Wildcard Selection: {0} disabled rule(s) skipped." -f $disabledWildcardCount) -ForegroundColor Yellow
         }
         $ruleSummary = @()
+        $destinationCopyRequests = @()
         $createdOutputNames = @{}
         $lastCreatedModelPath = $null
         $federatableExtensions = if (Get-Command Get-FederatableModelExtensions -ErrorAction SilentlyContinue) { Get-FederatableModelExtensions } else { @('.ifc', '.dwg', '.dgn', '.rvt', '.nwc') }
@@ -766,6 +965,7 @@ Groups IFCs and federates them into Navisworks outputs.
             $exclusions = @($exclusionText -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ })
             $outputName = ([string](Get-RowValue -Row $rule -Candidates @('ExportFileName','Export File Name'))).Trim()
             $readFromOutput = ([string](Get-RowValue -Row $rule -Candidates @('ReadFromOutputFolder','Read From Output Folder'))).Trim().ToLowerInvariant() -in @('yes','y','true','1')
+            $copyToDestination = ([string](Get-RowValue -Row $rule -Candidates @('CopyToDestination','Copy To Destination'))).Trim().ToLowerInvariant() -in @('yes','y','true','1')
             if ($inclusions.Count -eq 0 -or [string]::IsNullOrWhiteSpace($outputName)) {
                 $warning = "Wildcard rule $($ruleIndex + 1) skipped: Inclusions and ExportFileName are required."
                 Write-Warning $warning; Write-Log -Message $warning -Color 'Yellow' -Settings $ConfigSettings -LogsFolderOverride $LogsFolder -BasePath $basePath
@@ -793,16 +993,21 @@ Groups IFCs and federates them into Navisworks outputs.
             if ($matches.Count -eq 0) {
                 $warning = "Wildcard rule $($ruleIndex + 1) '$outputName' matched no files in '$sourcePath'; skipped."
                 Write-Warning $warning; Write-Log -Message $warning -Color 'Yellow' -Settings $ConfigSettings -LogsFolderOverride $LogsFolder -BasePath $basePath
-                $ruleSummary += [pscustomobject]@{ Rule=$ruleIndex + 1; ExportFileName="$outputName$ruleOutputExtension"; OutputFormat=$ruleOutputFormat; SourceFolder=$sourcePath; MatchedFiles=@(); Status='Skipped - no matches' }
+                $ruleSummary += [pscustomobject]@{ Rule=$ruleIndex + 1; ExportFileName="$outputName$ruleOutputExtension"; OutputFormat=$ruleOutputFormat; SourceFolder=$sourcePath; MatchedFiles=@(); CopyToDestination=$copyToDestination; Status='Skipped - no matches' }
                 continue
             }
             $result = CreateNwd -InputFiles ([pscustomobject]@{ FullName=$outputName; Children=$matches }) -OutputPath $OutputPath -NavisworksVersion $NavisworksVersion -NavisworksOptionsPath $NavisworksOptions -NavisworksOptions $NavisworksOptions -OutputFormat $ruleOutputFormat -BasePath $basePath
             if (-not $result.Model -or -not (Test-Path -LiteralPath $result.Model -PathType Leaf)) { throw "Wildcard rule $($ruleIndex + 1) failed to create '$outputName$ruleOutputExtension'." }
             $lastCreatedModelPath = $result.Model
-            $ruleSummary += [pscustomobject]@{ Rule=$ruleIndex + 1; ExportFileName="$outputName$ruleOutputExtension"; OutputFormat=$ruleOutputFormat; SourceFolder=$sourcePath; MatchedFiles=$matches; Status='Created' }
+            if ($copyToDestination) {
+                $destinationCopyRequests += [pscustomobject]@{ Rule=$ruleIndex + 1; SourcePath=$result.Model }
+            }
+            $ruleSummary += [pscustomobject]@{ Rule=$ruleIndex + 1; ExportFileName="$outputName$ruleOutputExtension"; OutputFormat=$ruleOutputFormat; SourceFolder=$sourcePath; MatchedFiles=$matches; CopyToDestination=$copyToDestination; Status='Created' }
         }
         if (-not $lastCreatedModelPath) { throw "Wildcard Selection created no Navisworks outputs." }
-        [ordered]@{ Timestamp=(Get-Date).ToUniversalTime().ToString('o'); GroupingMethod='Wildcard Selection'; InputFolderPath=$InputFolderPath; OutputFolderPath=$OutputPath; WildcardRules=$ruleSummary; LastCreatedModelPath=$lastCreatedModelPath } | ConvertTo-Json -Depth 10 | Set-Content -Path (Join-Path $OutputPath 'federation-summary.json') -Encoding UTF8
+        $destinationCopies = @(Copy-WildcardOutputsToDestination -CopyRequests $destinationCopyRequests -DestinationFolder $DestinationFolder -Settings $ConfigSettings -LogsFolder $LogsFolder -BasePath $basePath)
+        [ordered]@{ Timestamp=(Get-Date).ToUniversalTime().ToString('o'); GroupingMethod='Wildcard Selection'; InputFolderPath=$InputFolderPath; OutputFolderPath=$OutputPath; DestinationFolder=$DestinationFolder; DestinationCopies=$destinationCopies; WildcardRules=$ruleSummary; LastCreatedModelPath=$lastCreatedModelPath } | ConvertTo-Json -Depth 10 | Set-Content -Path (Join-Path $OutputPath 'federation-summary.json') -Encoding UTF8
+        Remove-NavisworksTemporaryOptionsPath -Path $TemporaryNavisworksOptionsPath
         if ($TranscriptStarted) { Stop-Transcript | Out-Null; $global:MainTranscriptActive = $false }
         return
     }
@@ -1007,6 +1212,7 @@ Groups IFCs and federates them into Navisworks outputs.
     Write-Host "Process finish time: $ProcessEndTime"
     Write-Host "Total duration: $([math]::Round($TotalDuration.TotalMinutes,2)) minutes"
     Write-Host "=== END 050-GroupFilesForFedProcess ==="
+    Remove-NavisworksTemporaryOptionsPath -Path $TemporaryNavisworksOptionsPath
     if ($TranscriptStarted) {
         Stop-Transcript | Out-Null
         $global:MainTranscriptActive = $false
