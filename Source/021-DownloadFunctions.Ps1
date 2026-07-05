@@ -327,7 +327,7 @@ Downloads IFCs from ProjectWise and writes the attributes workbook.
 #>
     [CmdletBinding()]
     param(
-        [string]$InputExcelFile = "Config.xlsx",
+        [string]$InputExcelFile = "Config.json",
         [array]$Settings = @(),
         [Parameter(Mandatory = $true)][array]$DownloadRows,
         [Parameter(Mandatory = $true)][array]$PWAttributeListRows,
@@ -354,10 +354,8 @@ Downloads IFCs from ProjectWise and writes the attributes workbook.
     $searchFailedCount = 0
     $searchFailureDetails = New-Object System.Collections.Generic.List[string]
 
-    # Ensure Excel support is available. ProjectWise support is loaded only if a PW row is used.
-    Ensure-FEDAUTOProcessExecutionPolicy
-    Ensure-ModuleAvailable -Name ImportExcel
-    Import-Module ImportExcel -ErrorAction Stop
+    # JSON/CSV build: no runtime module installation or execution-policy changes.
+    # ProjectWise support is loaded only if a ProjectWise row is used.
 
     $ConfigFilePath = if ([System.IO.Path]::IsPathRooted($InputExcelFile)) {
         $InputExcelFile
@@ -372,7 +370,7 @@ Downloads IFCs from ProjectWise and writes the attributes workbook.
     $ProcessedFolder = CureFolderPath ($Config | Where-Object { $_.Parameter -eq "ProcessedFolder" } | Select-Object -ExpandProperty Value)
     if ([string]::IsNullOrWhiteSpace($LocalFolder)) { $LocalFolder = "SourceFiles" }
     if ([string]::IsNullOrWhiteSpace($ProcessedFolder)) { $ProcessedFolder = "ProcessedIFC" }
-    if ([string]::IsNullOrWhiteSpace($AttributesFile)) { $AttributesFile = "PWAttributes.xlsx" }
+    if ([string]::IsNullOrWhiteSpace($AttributesFile)) { $AttributesFile = "PWAttributes.csv" }
 
     if (-not $PWUser) {
         $PWUser = $Config | Where-Object { $_.Parameter -eq "PWUser" } | Select-Object -ExpandProperty Value
@@ -469,7 +467,7 @@ Downloads IFCs from ProjectWise and writes the attributes workbook.
     }
 
     <#
-    Parses a PW folder value from Config.xlsx (usually copy/pasted from PWE)
+    Parses a PW folder value from Config.json (usually copy/pasted from PWE)
     into datasource + searchable folder path.
     #>
     function Resolve-ProjectWiseReadFolderInfo {
@@ -577,6 +575,22 @@ Downloads IFCs from ProjectWise and writes the attributes workbook.
         return $patterns
     }
 
+    function Write-DownloadProgress {
+        param(
+            [string]$Status,
+            [string]$FileName
+        )
+        $safeStatus = if ([string]::IsNullOrWhiteSpace($Status)) { 'Processing' } else { $Status }
+        $safeFile = if ($FileName) { $FileName -replace '\|', ' ' } else { '' }
+        Write-Host ("DOWNLOAD_PROGRESS|FolderCurrent={0}|FolderTotal={1}|Current={2}|Total={3}|Status={4}|File={5}" -f `
+            $script:FEDAUTODownloadFolderCurrent,
+            $script:FEDAUTODownloadFolderTotal,
+            $script:FEDAUTODownloadFileCurrent,
+            $script:FEDAUTODownloadFileTotal,
+            $safeStatus,
+            $safeFile)
+    }
+
     function Add-LocalFileToList {
         param(
             [System.IO.FileInfo]$File,
@@ -645,6 +659,7 @@ Downloads IFCs from ProjectWise and writes the attributes workbook.
             $Row,
             [string]$ReadFolder
         )
+        Write-DownloadProgress -Status 'Copying' -FileName $File.Name
 
         $destination = Join-Path $LocalFolder $File.Name
         $skipIfSame = -not ($Row.PSObject.Properties.Name -contains 'SkipIfSame') -or -not ($Row.SkipIfSame -eq 'No')
@@ -696,6 +711,9 @@ Downloads IFCs from ProjectWise and writes the attributes workbook.
         }
 
         Add-LocalFileToList -File $File -ReadFolder $ReadFolder
+        $script:FEDAUTODownloadFileCurrent++
+        $downloadStatus = if ($copyNeeded) { 'Copied' } else { 'Skipped' }
+        Write-DownloadProgress -Status $downloadStatus -FileName $File.Name
     }
 
     function Ensure-ProjectWiseCommands {
@@ -754,8 +772,15 @@ Downloads IFCs from ProjectWise and writes the attributes workbook.
     $currentDatasource = $null
     $projectWiseLoggedIn = $false
     $hasCredentials = -not [string]::IsNullOrWhiteSpace($PWUser) -and -not [string]::IsNullOrWhiteSpace($PWPass)
+    $script:FEDAUTODownloadFolderTotal = $FS.Count
+    $script:FEDAUTODownloadFolderCurrent = 0
+    $script:FEDAUTODownloadFileTotal = 0
+    $script:FEDAUTODownloadFileCurrent = 0
 
     foreach($F in $FS) {
+        $script:FEDAUTODownloadFolderCurrent++
+        $script:FEDAUTODownloadFileTotal = 0
+        $script:FEDAUTODownloadFileCurrent = 0
         $readFolder = Get-ReadFolderValue -Row $F
         $checkDateValue = $null
         if ($F.PSObject.Properties.Name -contains 'CheckDateToo') {
@@ -873,6 +898,9 @@ Downloads IFCs from ProjectWise and writes the attributes workbook.
             $PWdocs = @($PWdocs)
             $j = $PWdocs.Count
             Write-Host "Documents found after exclusion: $j"
+            $script:FEDAUTODownloadFileTotal = $j
+            $script:FEDAUTODownloadFileCurrent = 0
+            Write-DownloadProgress -Status 'Queued' -FileName $readFolder
             For ($i = 0 ; $i -lt $j ; $i++)
             {
                 try {
@@ -880,8 +908,12 @@ Downloads IFCs from ProjectWise and writes the attributes workbook.
                 }
                 catch {
                     Write-Warning "Failed to get document by GUID for index $i in folder ${readFolder}: $_"
+                    $script:FEDAUTODownloadFileCurrent++
+                    Write-DownloadProgress -Status 'Failed' -FileName ("Document index {0}" -f ($i + 1))
                     continue
                 }
+                $displayNameForProgress = if ($TempD.FileName) { $TempD.FileName } else { $TempD.Name }
+                Write-DownloadProgress -Status 'Downloading' -FileName $displayNameForProgress
                 $FilePath = Join-Path $LocalFolder $TempD.FileName
                 if (Test-Path $FilePath)
                     {
@@ -916,6 +948,8 @@ Downloads IFCs from ProjectWise and writes the attributes workbook.
                     DU("file on PW was not downloaded before")
                     }
                 Add2List($TempD)
+                $script:FEDAUTODownloadFileCurrent++
+                Write-DownloadProgress -Status 'Actioned' -FileName $displayNameForProgress
             }
             continue
         }
@@ -949,6 +983,9 @@ Downloads IFCs from ProjectWise and writes the attributes workbook.
         }
         $localFiles = @($localFiles)
         Write-Host "Local files found after exclusion: $($localFiles.Count)"
+        $script:FEDAUTODownloadFileTotal = $localFiles.Count
+        $script:FEDAUTODownloadFileCurrent = 0
+        Write-DownloadProgress -Status 'Queued' -FileName $resolvedReadFolder
         foreach ($file in $localFiles) {
             Copy-LocalSourceFile -File $file -Row $F -ReadFolder $resolvedReadFolder
         }
@@ -993,8 +1030,7 @@ Downloads IFCs from ProjectWise and writes the attributes workbook.
         if (-not $partialSearchFailure) {
             $global:PWDownloadStatus = 'Success'
         }
-        $list | Export-Excel -Path $PWAttributes -WorksheetName 'Attributes' -ClearSheet
-        Ensure-ExcelTable -Path $PWAttributes -WorksheetName 'Attributes' -TableName 'Attributes'
+        $list | Export-Csv -LiteralPath $PWAttributes -NoTypeInformation -Encoding UTF8
 
         if ($partialSearchFailure) {
             Write-Host "Safety response active: skipping deleted-file and orphan NWC cleanup because some read-folder searches failed." -ForegroundColor Yellow
@@ -1005,7 +1041,7 @@ Downloads IFCs from ProjectWise and writes the attributes workbook.
             if (-not (Test-Path $deletedRoot)) { New-Item -Path $deletedRoot -ItemType Directory -Force | Out-Null }
 
             $deletedLogRoot = if ($LogsFolder) { $LogsFolder } else { Split-Path -Parent $LocalFolder }
-            $deletedLogPath = Join-Path $deletedLogRoot 'Deleted_files.xlsx'
+            $deletedLogPath = Join-Path $deletedLogRoot 'Deleted_files.csv'
             $deletedRows = @()
             $previousLookup = @{}
             if ($previousAttributeRows) {
@@ -1104,8 +1140,7 @@ Downloads IFCs from ProjectWise and writes the attributes workbook.
                 $allRows = @()
                 if ($existingRows) { $allRows += $existingRows }
                 $allRows += $deletedRows
-                $allRows | Export-Excel -Path $deletedLogPath -WorksheetName 'Deleted' -ClearSheet
-                Ensure-ExcelTable -Path $deletedLogPath -WorksheetName 'Deleted' -TableName 'Deleted'
+                $allRows | Export-Csv -LiteralPath $deletedLogPath -NoTypeInformation -Encoding UTF8
             }
         }
 
@@ -1146,4 +1181,6 @@ Downloads IFCs from ProjectWise and writes the attributes workbook.
         $global:MainTranscriptActive = $false
     }
 }
+
+
 

@@ -469,6 +469,31 @@ if (-not (Get-Variable -Name PWAttributeDefinitions -Scope Script -ErrorAction S
     $script:PWAttributeDefinitions = @()
 }
 
+function Write-FederationNwdProgress {
+    param(
+        [string]$Status,
+        [string]$Name
+    )
+    $total = if ($script:FEDAUTONwdProgressTotal) { [int]$script:FEDAUTONwdProgressTotal } else { 0 }
+    if ($total -le 0) { return }
+    $current = if ($script:FEDAUTONwdProgressCurrent) { [int]$script:FEDAUTONwdProgressCurrent } else { 0 }
+    $safeStatus = if ([string]::IsNullOrWhiteSpace($Status)) { 'Processing' } else { $Status }
+    $safeName = if ($Name) { $Name -replace '\|', ' ' } else { '' }
+    Write-Host ("FEDERATION_NWD_PROGRESS|Current={0}|Total={1}|Status={2}|Name={3}" -f $current, $total, $safeStatus, $safeName)
+}
+
+function Complete-FederationNwdProgress {
+    param(
+        [string]$Status,
+        [string]$Name
+    )
+    $total = if ($script:FEDAUTONwdProgressTotal) { [int]$script:FEDAUTONwdProgressTotal } else { 0 }
+    if ($total -le 0) { return }
+    $current = if ($script:FEDAUTONwdProgressCurrent) { [int]$script:FEDAUTONwdProgressCurrent } else { 0 }
+    $script:FEDAUTONwdProgressCurrent = [Math]::Min($total, $current + 1)
+    Write-FederationNwdProgress -Status $Status -Name $Name
+}
+
 function CreateNwd {
 <#
 Creates a Navisworks model from a group node.
@@ -487,6 +512,7 @@ Creates a Navisworks model from a group node.
     )
     # Basic runtime info for console/trace logs.
     Write-Host "Processing $($InputFiles.FullName)... Do not close the window."
+    Write-FederationNwdProgress -Status 'Creating' -Name $InputFiles.FullName
     $start = Get-Date
 
     # Output name is derived from the grouping hierarchy and sanitized for filesystem.
@@ -557,6 +583,8 @@ Model(s) federated: $([string]::Join(', ', $InputFiles.Children))
 NW Arguments: $argString
 "@
     Write-Host $logTxt
+    $nwdProgressStatus = if ($InputFiles.Children.Count -gt 0) { 'Created' } else { 'Skipped' }
+    Complete-FederationNwdProgress -Status $nwdProgressStatus -Name $InputFiles.FullName
 
     # Return a summary object for further use
     [pscustomobject]@{
@@ -613,7 +641,7 @@ Groups IFCs and federates them into Navisworks outputs.
 #>
     [CmdletBinding()]
     param(
-        [string]$ConfigFile = "Config.xlsx",
+        [string]$ConfigFile = "Config.json",
         [array]$Settings = @(),
         [Parameter(Mandatory = $true)][array]$FederationRows,
         [array]$WildcardSelectionRows = @(),
@@ -622,7 +650,7 @@ Groups IFCs and federates them into Navisworks outputs.
         [switch]$UseFederationInputFolder
     )
 
-    # Resolve script root to find Config.xlsx and related assets.
+    # Resolve script root to find Config.json and related assets.
     $basePath = if ($PSCommandPath) { Split-Path -Parent $PSCommandPath }
     elseif ($null -ne $MyInvocation.MyCommand.Path -and $MyInvocation.MyCommand.Path -ne '') {
         Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -956,6 +984,9 @@ Groups IFCs and federates them into Navisworks outputs.
         $destinationCopyRequests = @()
         $createdOutputNames = @{}
         $lastCreatedModelPath = $null
+        $script:FEDAUTONwdProgressTotal = $wildcardRows.Count
+        $script:FEDAUTONwdProgressCurrent = 0
+        Write-FederationNwdProgress -Status 'Queued' -Name 'Wildcard Selection'
         $federatableExtensions = if (Get-Command Get-FederatableModelExtensions -ErrorAction SilentlyContinue) { Get-FederatableModelExtensions } else { @('.ifc', '.dwg', '.dgn', '.rvt', '.nwc') }
         for ($ruleIndex = 0; $ruleIndex -lt $wildcardRows.Count; $ruleIndex++) {
             $rule = $wildcardRows[$ruleIndex]
@@ -969,6 +1000,7 @@ Groups IFCs and federates them into Navisworks outputs.
             if ($inclusions.Count -eq 0 -or [string]::IsNullOrWhiteSpace($outputName)) {
                 $warning = "Wildcard rule $($ruleIndex + 1) skipped: Inclusions and ExportFileName are required."
                 Write-Warning $warning; Write-Log -Message $warning -Color 'Yellow' -Settings $ConfigSettings -LogsFolderOverride $LogsFolder -BasePath $basePath
+                Complete-FederationNwdProgress -Status 'Skipped' -Name ("Wildcard rule {0}" -f ($ruleIndex + 1))
                 continue
             }
             $ruleOutputFormat = Resolve-NavisworksOutputFormatFromFileName -Name $outputName
@@ -994,6 +1026,7 @@ Groups IFCs and federates them into Navisworks outputs.
                 $warning = "Wildcard rule $($ruleIndex + 1) '$outputName' matched no files in '$sourcePath'; skipped."
                 Write-Warning $warning; Write-Log -Message $warning -Color 'Yellow' -Settings $ConfigSettings -LogsFolderOverride $LogsFolder -BasePath $basePath
                 $ruleSummary += [pscustomobject]@{ Rule=$ruleIndex + 1; ExportFileName="$outputName$ruleOutputExtension"; OutputFormat=$ruleOutputFormat; SourceFolder=$sourcePath; MatchedFiles=@(); CopyToDestination=$copyToDestination; Status='Skipped - no matches' }
+                Complete-FederationNwdProgress -Status 'Skipped' -Name $outputName
                 continue
             }
             $result = CreateNwd -InputFiles ([pscustomobject]@{ FullName=$outputName; Children=$matches }) -OutputPath $OutputPath -NavisworksVersion $NavisworksVersion -NavisworksOptionsPath $NavisworksOptions -NavisworksOptions $NavisworksOptions -OutputFormat $ruleOutputFormat -BasePath $basePath
@@ -1128,6 +1161,11 @@ Groups IFCs and federates them into Navisworks outputs.
             Write-Log -Message $message -Color 'Red' -Settings $ConfigSettings -LogsFolderOverride $LogsFolder -BasePath $basePath
             throw $message
         }
+        $script:FEDAUTONwdProgressTotal = $groupNodeNames.Count
+        if ($unmatchedFiles.Count -gt 0) { $script:FEDAUTONwdProgressTotal++ }
+        $script:FEDAUTONwdProgressTotal++
+        $script:FEDAUTONwdProgressCurrent = 0
+        Write-FederationNwdProgress -Status 'Queued' -Name 'Grouped federation'
         $TopOutputs = foreach ($top in $GroupedStructure) {
             FederateGroup -Group $top -NavisworksOptionsPath $NavisworksOptions -NavisworksOptions $NavisworksOptions -BasePath $basePath
         }
@@ -1138,6 +1176,11 @@ Groups IFCs and federates them into Navisworks outputs.
         $message = ("Federation naming rules matched none of the {0} supported file(s) in '{1}'. Building only the unmatched-files NWD." -f $modelCandidates.Count, $InputFolderPath)
         Write-Host $message -ForegroundColor Yellow
         Write-Log -Message $message -Color 'Yellow' -Settings $ConfigSettings -LogsFolderOverride $LogsFolder -BasePath $basePath
+        $script:FEDAUTONwdProgressTotal = 0
+        if ($unmatchedFiles.Count -gt 0) { $script:FEDAUTONwdProgressTotal++ }
+        if ($unmatchedFiles.Count -gt 0 -and $includeUnmatchedFilesInFederatedModel) { $script:FEDAUTONwdProgressTotal++ }
+        $script:FEDAUTONwdProgressCurrent = 0
+        Write-FederationNwdProgress -Status 'Queued' -Name 'Unmatched federation'
     }
 
     $topNwds = @($TopOutputs | Where-Object { $_ -and (Test-Path $_) })
@@ -1225,7 +1268,7 @@ Runs the Revizto publish schedule based on settings.
 #>
     [CmdletBinding()]
     param(
-        [string]$ConfigFile = "Config.xlsx",
+        [string]$ConfigFile = "Config.json",
         [array]$Settings = @(),
         [string]$LogsFolder
     )
@@ -1313,4 +1356,5 @@ Runs the Revizto publish schedule based on settings.
         Write-Log -Message $logLine -Color '' -Settings $settings -LogsFolderOverride $LogsFolder -BasePath $basePath -NoConsole
     }
 }
+
 

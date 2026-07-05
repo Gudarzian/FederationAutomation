@@ -4,40 +4,25 @@ Shared utilities for Federation Automation.
 #>
 
 function Ensure-ModuleAvailable {
-    <#
-    Ensures a PowerShell module is installed for the current user.
-    #>
     [CmdletBinding()]
     param(
-        [Parameter(Mandatory = $true)]
-        [string]$Name,
+        [Parameter(Mandatory = $true)][string]$Name,
         [string]$InstallName = $Name
     )
-
-    if (-not (Get-Module -ListAvailable -Name $Name)) {
-        Write-Host "$Name module not found. Installing..."
-        Install-Module -Name $InstallName -Scope CurrentUser -Force -AllowClobber -ErrorAction Stop
+    if (Get-Module -ListAvailable -Name $Name) {
+        Import-Module -Name $Name -ErrorAction Stop
+        return
     }
-
+    throw "Required PowerShell module '$Name' is not installed. The JSON/CSV build does not install modules or change execution policy at runtime."
 }
-
 function Ensure-FEDAUTOProcessExecutionPolicy {
 <#
-Allows locally installed PowerShell modules to load in this process only.
+JSON/CSV build: intentionally does not change PowerShell execution policy.
 #>
     [CmdletBinding()]
     param()
-    try {
-        $processPolicy = Get-ExecutionPolicy -Scope Process
-        if ($processPolicy -notin @('RemoteSigned','Unrestricted')) {
-            Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned -Force -ErrorAction Stop
-        }
-    }
-    catch {
-        Write-Warning "Unable to set process execution policy to RemoteSigned. Module loading may be blocked. $($_.Exception.Message)"
-    }
+    return
 }
-
 function Resolve-RelativePath {
 <#
 Resolves a relative path against a root path; returns rooted paths unchanged.
@@ -50,6 +35,22 @@ Resolves a relative path against a root path; returns rooted paths unchanged.
     if ([string]::IsNullOrWhiteSpace($PathValue)) { return $PathValue }
     if ([System.IO.Path]::IsPathRooted($PathValue)) { return $PathValue }
     return (Join-Path $Root $PathValue)
+}
+
+function CureFolderPath {
+<#
+Normalizes folder/path text from configuration values without touching the file
+system. Kept dependency-free so compiled GUI and pipeline builds can call it
+early during startup.
+#>
+    [CmdletBinding()]
+    param([string]$FolderPath)
+
+    if ([string]::IsNullOrWhiteSpace($FolderPath)) { return '' }
+    $text = $FolderPath.Trim()
+    $text = $text.Trim('"', "'")
+    if ([string]::IsNullOrWhiteSpace($text)) { return '' }
+    return [Environment]::ExpandEnvironmentVariables($text)
 }
 
 function Get-FederatableModelExtensions {
@@ -93,324 +94,51 @@ Model.nwc and Model.ifc.nwc style cache names.
 }
 
 function Get-ExcelDataSafe {
-    <#
-    .SYNOPSIS
-        Safely reads an Excel file (even if locked) using ImportExcel.
-
-    .DESCRIPTION
-        - Ensures the ImportExcel module is installed and loaded.
-        - Detects if the Excel file is locked by another process.
-        - If locked, creates a temporary copy for safe reading.
-        - Returns the imported data as PowerShell objects.
-        - Requires a named range (via Open-ExcelPackage).
-
-    .PARAMETER Path
-        Full path to the Excel (.xlsx) file.
-
-    .PARAMETER NamedRange
-        Named range to import.
-
-    .EXAMPLE
-        $data = Get-ExcelDataSafe -Path "C:\Data\Report.xlsx" -NamedRange "Summary"
-    #>
-
+<#
+JSON/CSV build compatibility shim.
+Reads CSV or JSON tabular files and returns PowerShell objects. Spreadsheet workbooks are intentionally unsupported in this build.
+#>
     [CmdletBinding()]
     param(
-        [Parameter(Mandatory = $true)]
-        [string]$Path,
-
-        [Parameter(Mandatory = $true)]
-        [string]$NamedRange
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][string]$NamedRange
     )
 
-    # --- Ensure ImportExcel module is available ---
-    Ensure-FEDAUTOProcessExecutionPolicy
-    Ensure-ModuleAvailable -Name ImportExcel
-    Import-Module ImportExcel -ErrorAction Stop
-
-    # --- Helper: Check if file is locked ---
-    <#
-    Checks whether the Excel file is locked by another process.
-    #>
-    function Test-FileLocked {
-        param([string]$FilePath)
-        try {
-            $fs = [System.IO.File]::Open($FilePath, 'Open', 'Read', 'None')
-            $fs.Close()
-            return $false
-        } catch {
-            return $true
-        }
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+        throw "Tabular data file not found: $Path"
     }
 
-    <#
-    Resolves a table name to its worksheet and address.
-    #>
-    function Resolve-NamedRange {
-        param(
-            [Parameter(Mandatory = $true)]
-            $Package,
-            [Parameter(Mandatory = $true)]
-            [string]$Name
-        )
-
-        foreach ($ws in $Package.Workbook.Worksheets) {
-            if (-not $ws) { continue }
-            if (-not $ws.Tables) { continue }
-            $table = $ws.Tables[$Name]
-            if ($table) {
-                return [pscustomobject]@{
-                    Worksheet = $ws
-                    Range     = $table.Address.Address
-                }
-            }
-        }
-
-        return $null
+    $extension = [System.IO.Path]::GetExtension($Path).ToLowerInvariant()
+    if ($extension -eq '.csv') {
+        return @(Import-Csv -LiteralPath $Path)
+    }
+    if ($extension -eq '.json') {
+        $raw = Get-Content -LiteralPath $Path -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
+        if ($raw.PSObject.Properties.Name -contains $NamedRange) { return @($raw.$NamedRange) }
+        return @($raw)
     }
 
-    <#
-    Converts an Excel range into row objects using the first row as headers.
-    #>
-    function Convert-RangeToObjects {
-        param(
-            [Parameter(Mandatory = $true)]
-            $Range
-        )
-
-        $values = $Range.Value
-        if (-not $values) { return @() }
-        if (-not ($values -is [System.Array])) {
-            return @()
-        }
-
-        $rowCount = $values.GetLength(0)
-        $colCount = $values.GetLength(1)
-        if ($rowCount -lt 1 -or $colCount -lt 1) { return @() }
-
-        $rowLower = $values.GetLowerBound(0)
-        $colLower = $values.GetLowerBound(1)
-        $headerRow = $rowLower
-
-        $headers = @()
-        for ($c = 0; $c -lt $colCount; $c++) {
-            $colIndex = $colLower + $c
-            $header = $values[$headerRow, $colIndex]
-            if ($null -eq $header -or [string]::IsNullOrWhiteSpace($header.ToString())) {
-                $header = "Column$($c + 1)"
-            }
-            $headers += $header.ToString()
-        }
-
-        $rows = @()
-        for ($r = 1; $r -lt $rowCount; $r++) {
-            $rowIndex = $rowLower + $r
-            $row = [ordered]@{}
-            for ($c = 0; $c -lt $colCount; $c++) {
-                $colIndex = $colLower + $c
-                $row[$headers[$c]] = $values[$rowIndex, $colIndex]
-            }
-            $rows += [pscustomobject]$row
-        }
-        return $rows
-    }
-
-    # --- Read Excel safely ---
-    if (Test-FileLocked $Path) {
-        # File is locked by Excel or another process: copy to temp for safe read.
-        $TempPath = [System.IO.Path]::GetTempFileName()
-        $TempXlsx = [System.IO.Path]::ChangeExtension($TempPath, 'xlsx')
-        Move-Item $TempPath $TempXlsx -Force
-        Copy-Item $Path $TempXlsx -Force
-
-        try {
-            if ($PSBoundParameters.ContainsKey('NamedRange')) {
-                $pkg = Open-ExcelPackage -Path $TempXlsx
-                try {
-                $resolved = Resolve-NamedRange -Package $pkg -Name $NamedRange
-                if ($resolved) {
-                    $range = $resolved.Worksheet.Cells[$resolved.Range]
-                    $data = Convert-RangeToObjects -Range $range
-                }
-                else {
-                    $ws = $pkg.Workbook.Worksheets[$NamedRange]
-                    if (-not $ws) { throw "Named range or worksheet '$NamedRange' not found in '$Path'." }
-                    if (-not $ws.Dimension) { $data = @() }
-                    else {
-                        $data = Convert-RangeToObjects -Range $ws.Cells[$ws.Dimension.Address]
-                    }
-                }
-            }
-            finally {
-                Close-ExcelPackage $pkg -NoSave
-            }
-            }
-            else {
-                throw "NamedRange is required for Get-ExcelDataSafe."
-            }
-        }
-        finally {
-            Remove-Item $TempXlsx -ErrorAction SilentlyContinue
-        }
-    } else {
-        # File is not locked; read directly to avoid extra IO.
-        if ($PSBoundParameters.ContainsKey('NamedRange')) {
-            $pkg = Open-ExcelPackage -Path $Path
-            try {
-            $resolved = Resolve-NamedRange -Package $pkg -Name $NamedRange
-            if ($resolved) {
-                $range = $resolved.Worksheet.Cells[$resolved.Range]
-                $data = Convert-RangeToObjects -Range $range
-            }
-            else {
-                $ws = $pkg.Workbook.Worksheets[$NamedRange]
-                if (-not $ws) { throw "Named range or worksheet '$NamedRange' not found in '$Path'." }
-                if (-not $ws.Dimension) { $data = @() }
-                else {
-                    $data = Convert-RangeToObjects -Range $ws.Cells[$ws.Dimension.Address]
-                }
-            }
-        }
-        finally {
-            Close-ExcelPackage $pkg -NoSave
-        }
-        }
-        else {
-            throw "NamedRange is required for Get-ExcelDataSafe."
-        }
-    }
-
-    return $data
+    throw "Spreadsheet files are not supported in the JSON/CSV build: $Path. Use .json configuration files and .csv attribute files."
 }
-
 function Get-SettingsSafe {
-<#
-Safely reads the Settings named range. Returns an empty array if missing.
-#>
+<# JSON/CSV build: settings are read from Config.json only. #>
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)][string]$ConfigPath,
         [string]$BasePath
     )
-    try {
-        return Get-ExcelDataSafe -Path $ConfigPath -NamedRange "Settings"
-    }
-    catch {
-        $msg = "Settings named range not found or could not be read in '$ConfigPath'. Defaults will be used. Error: $_"
-        if (Get-Command Write-Log -ErrorAction SilentlyContinue) {
-            Write-Log -Message $msg -Color 'Yellow' -BasePath $BasePath
-        }
-        else {
-            Write-Warning $msg
-        }
-        return @()
-    }
+    throw 'Spreadsheet configuration files are not supported in the JSON/CSV build. Use Config.json.'
 }
-
 function Ensure-ExcelTable {
-<#
-Ensures a worksheet contains a named table for downstream reads.
-- Creates a table over the used range when missing.
-#>
+<# JSON/CSV build: CSV files do not need Excel tables. #>
     [CmdletBinding()]
     param(
-        [Parameter(Mandatory = $true)]
-        [string]$Path,
-        [Parameter(Mandatory = $true)]
-        [string]$WorksheetName,
-        [Parameter(Mandatory = $true)]
-        [string]$TableName
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][string]$WorksheetName,
+        [Parameter(Mandatory = $true)][string]$TableName
     )
-
-    if (-not (Test-Path $Path -PathType Leaf)) { return }
-
-    $pkg = Open-ExcelPackage -Path $Path
-    try {
-        $ws = $pkg.Workbook.Worksheets[$WorksheetName]
-        if (-not $ws) { return }
-        if ($ws.Tables[$TableName]) { return }
-        if (-not $ws.Dimension) { return }
-        $range = $ws.Cells[$ws.Dimension.Address]
-        $null = $ws.Tables.Add($range, $TableName)
-    }
-    finally {
-        Close-ExcelPackage $pkg
-    }
+    return
 }
-
-Function CureFolderPath($InFolder) {
-<#
-Normalizes folder path text for consistent handling.
-- Returns null/blank unchanged.
-- Converts '/' to '\' and trims whitespace.
-- Remaps known user-profile synced roots from any username to the current user.
-#>
-    if ([string]::IsNullOrWhiteSpace($InFolder)) { return $InFolder }
-
-    $inputText = $InFolder.Trim()
-    $normalized = $inputText -replace '/', '\'
-
-    # Username remap: C:\Users\<other>\OneDrive - <tenant>\... -> current user's OneDrive commercial root.
-    if ($normalized -match '^(?<drive>[A-Za-z]:)\\Users\\[^\\]+\\OneDrive - (?<tenant>[^\\]+)\\?(?<rest>.*)$') {
-        $root = if (-not [string]::IsNullOrWhiteSpace($Env:OneDriveCommercial)) {
-            $Env:OneDriveCommercial
-        }
-        else {
-            Join-Path (Join-Path ($Matches['drive'] + '\Users') $env:USERNAME) ("OneDrive - " + $Matches['tenant'])
-        }
-        $rest = $Matches['rest']
-        if ([string]::IsNullOrWhiteSpace($rest)) {
-            return $root
-        }
-        return (Join-Path $root $rest)
-    }
-
-    # Username remap: C:\Users\<other>\OneDrive\... -> current user's OneDrive personal root.
-    if ($normalized -match '^(?<drive>[A-Za-z]:)\\Users\\[^\\]+\\OneDrive\\?(?<rest>.*)$') {
-        $root = if (-not [string]::IsNullOrWhiteSpace($Env:OneDrive)) {
-            $Env:OneDrive
-        }
-        else {
-            Join-Path (Join-Path ($Matches['drive'] + '\Users') $env:USERNAME) 'OneDrive'
-        }
-        $rest = $Matches['rest']
-        if ([string]::IsNullOrWhiteSpace($rest)) {
-            return $root
-        }
-        return (Join-Path $root $rest)
-    }
-
-    # Username remap: C:\Users\<other>\DC\ACCDocs\... -> current user's ACC docs root.
-    if ($normalized -match '^[A-Za-z]:\\Users\\[^\\]+\\DC\\ACCDocs\\?(?<rest>.*)$') {
-        $root = Join-Path $env:USERPROFILE 'DC\ACCDocs'
-        $rest = $Matches['rest']
-        if ([string]::IsNullOrWhiteSpace($rest)) {
-            return $root
-        }
-        return (Join-Path $root $rest)
-    }
-
-    # Username remap for SharePoint sync roots (derived from OneDriveCommercial): C:\Users\<other>\<Company>\...
-    $spRoot = if (-not [string]::IsNullOrWhiteSpace($Env:OneDriveCommercial)) {
-        ($Env:OneDriveCommercial -replace 'OneDrive - ', '')
-    }
-    else {
-        $null
-    }
-    if ($spRoot) {
-        $company = Split-Path -Path $spRoot -Leaf
-        if ($normalized -match ('^[A-Za-z]:\\Users\\[^\\]+\\' + [regex]::Escape($company) + '\\?(?<rest>.*)$')) {
-            $rest = $Matches['rest']
-            if ([string]::IsNullOrWhiteSpace($rest)) {
-                return $spRoot
-            }
-            return (Join-Path $spRoot $rest)
-        }
-    }
-
-    return $normalized
-}
-
 function Get-LogFilePath {
 <#
 Returns the log file path and append mode.
@@ -977,4 +705,9 @@ Returns true when all configured Federation filename parts exist and are non-bla
 
     return $true
 }
+
+
+
+
+
 

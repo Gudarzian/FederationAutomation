@@ -1,4 +1,4 @@
-<#
+﻿<#
 Configuration adapters for Federation Automation.
 JSON is the editable, application-friendly format.  Existing Excel named-range
 configuration remains supported so current projects do not need to migrate at once.
@@ -35,15 +35,19 @@ function ConvertTo-PipelineSettingsRows {
 function Get-FEDAUTOSettingsCatalog {
     <# Canonical settings shown by the JSON-first GUI, including pipeline defaults. #>
     $items = @(
-        @('Working folders & metadata','LogFolder','Logs','Folder for run logs. Relative paths are based on the application folder.'),
-        @('Working folders & metadata','SourceFolder','SourceFiles','Folder where downloaded or copied source model files are staged.'),
-        @('Working folders & metadata','AttributesFile','PWAttributes.xlsx','Excel workbook under SourceFolder that stores captured source metadata.'),
+        @('General settings','LogFolder','Logs','Folder for run logs. Relative paths are based on the application folder.'),
+        @('General settings','SourceFolder','SourceFiles','Folder where downloaded or copied source model files are staged.'),
+        @('General settings','AttributesFile','PWAttributes.csv','CSV file under SourceFolder that stores captured source metadata.'),
         @('Source acquisition','RunDownload','Yes','Retrieve or stage source model files before running the remaining stages.'),
         @('Source acquisition','SourceAcquisitionMode','Auto','Select Local, ProjectWise, or Auto. Auto supports a mixture of configured source rows.'),
         @('Source acquisition','PWUser','','Optional ProjectWise user name. Leave blank to use the normal Bentley/IMS sign-in.'),
         @('Source acquisition','PWPass','','Optional ProjectWise password. Prefer Windows Credential Manager rather than storing a password in JSON.'),
         @('IFC processing','RunProcess','No','Yes runs IFC processing when needed; No skips it; Force reprocesses all applicable IFC files.'),
         @('IFC processing','ProcessedFolder','ProcessedIFC','Folder for processed IFC files and process summaries.'),
+        @('IFC Data Extraction','RunIfcDataExtraction','No','Exports IFC object attributes to one CSV file per IFC when enabled.'),
+        @('IFC Data Extraction','IfcDataExtractionFolder','IFCDataExtraction','Folder for IFC attribute CSV exports. Relative paths are based on the application folder.'),
+        @('IFC Data Extraction','IfcDataExtractionMaxFileSizeMB','150','Maximum IFC file size to extract, in MB. Larger IFC files are skipped with a warning.'),
+        @('IFC Data Extraction','IfcDataExtractionSkipIfCsvIsCurrent','Yes','Skips extraction when the existing CSV file is newer than or equal to the source IFC. Use RunIfcDataExtraction=Force to extract regardless.'),
         @('Federation & Navisworks','RunFederation','Yes','Yes uses change-based federation; No disables it; Force always rebuilds the federation.'),
         @('Federation & Navisworks','FederationGroupingMethod','Naming Convention and Lookups','Choose Naming Convention and Lookups or Wildcard Selection.'),
         @('Federation & Navisworks','IncludeUnmatchedFilesInFederatedModel','No','Adds models that do not match federation naming rules into the final federated Navisworks model.'),
@@ -79,7 +83,7 @@ function Merge-FEDAUTOSettingsWithCatalog {
         $merged += [pscustomobject]@{ Section=$definition.Section; Parameter=$definition.Parameter; Value=$value; Desc=$definition.Desc; DefaultValue=$definition.DefaultValue; IsDefault=$isDefault }
     }
     foreach ($row in $Settings) {
-        if ($row -and $row.Parameter -and $row.Parameter -ne 'RunPWDownload' -and -not ($merged.Parameter -contains $row.Parameter)) {
+        if ($row -and $row.Parameter -and $row.Parameter -notin @('RunPWDownload','IfcDataExtractionEngine') -and -not ($merged.Parameter -contains $row.Parameter)) {
             $merged += [pscustomobject]@{ Section='Other settings'; Parameter=$row.Parameter; Value=$row.Value; Desc=$row.Desc; DefaultValue=''; IsDefault=$false }
         }
     }
@@ -116,32 +120,13 @@ function Get-PipelineConfiguration {
             PWAttributesList = @(ConvertTo-PipelineRows $raw.pwAttributesList)
             Federation       = @(ConvertTo-PipelineRows $raw.federation)
             WildcardSelection = @(ConvertTo-PipelineRows $raw.wildcardSelection)
+            IfcDataExtractionRules = @(ConvertTo-PipelineRows $raw.ifcDataExtractionRules)
             Lookups          = @(ConvertTo-PipelineRows $raw.lookups)
         }
     }
 
-    if ($extension -notin @('.xlsx', '.xlsm')) {
-        throw "Unsupported configuration format '$extension'. Use .json, .xlsx, or .xlsm."
-    }
-    if (-not (Get-Command Get-ExcelDataSafe -ErrorAction SilentlyContinue)) {
-        throw 'Excel configuration support is unavailable because Get-ExcelDataSafe was not loaded.'
-    }
-    # WildcardSelection was introduced after the legacy Excel format.  Its
-    # absence in existing workbooks is valid and simply means no rules exist.
-    $wildcardSelectionRows = @()
-    try { $wildcardSelectionRows = @(Get-ExcelDataSafe -Path $ConfigPath -NamedRange 'WildcardSelection') }
-    catch { $wildcardSelectionRows = @() }
-    return [pscustomobject]@{
-        Format           = 'Excel'
-        Settings         = @(Get-SettingsSafe -ConfigPath $ConfigPath -BasePath $BasePath)
-        Download         = @(Get-ExcelDataSafe -Path $ConfigPath -NamedRange 'Download')
-        PWAttributesList = @(Get-ExcelDataSafe -Path $ConfigPath -NamedRange 'PWAttributesList')
-        Federation       = @(Get-ExcelDataSafe -Path $ConfigPath -NamedRange 'Federation')
-        WildcardSelection = $wildcardSelectionRows
-        Lookups          = @(Get-ExcelDataSafe -Path $ConfigPath -NamedRange 'Lookups')
-    }
+    throw "Unsupported configuration format '$extension'. The JSON/CSV build supports .json only."
 }
-
 function Save-PipelineJsonConfiguration {
     [CmdletBinding()]
     param(
@@ -151,6 +136,7 @@ function Save-PipelineJsonConfiguration {
         [array]$PWAttributesList,
         [array]$Federation,
         [array]$WildcardSelection,
+        [array]$IfcDataExtractionRules,
         [array]$Lookups
     )
 
@@ -169,6 +155,7 @@ function Save-PipelineJsonConfiguration {
         pwAttributesList = @($PWAttributesList | Where-Object { $null -ne $_ })
         federation       = @($Federation | Where-Object { $null -ne $_ })
         wildcardSelection = @($WildcardSelection | Where-Object { $null -ne $_ })
+        ifcDataExtractionRules = @($IfcDataExtractionRules | Where-Object { $null -ne $_ })
         lookups          = @($Lookups | Where-Object { $null -ne $_ })
     }
     $json = $document | ConvertTo-Json -Depth 12
@@ -188,3 +175,5 @@ function Save-PipelineJsonConfiguration {
         if (Test-Path -LiteralPath $temporaryPath) { Remove-Item -LiteralPath $temporaryPath -Force -ErrorAction SilentlyContinue }
     }
 }
+
+

@@ -15,7 +15,7 @@ if (-not (Test-Path -LiteralPath $pipelineFile -PathType Leaf)) {
 }
 Import-Module ps2exe -ErrorAction Stop
 $resources = @{}
-foreach ($file in '012-SharedFunctions.Ps1','013-ConfigFunctions.Ps1') {
+foreach ($file in '012-SharedFunctions.Ps1','013-ConfigFunctions.Ps1','041-FederationFunctions.Ps1') {
     $path = Join-Path $basePath $file
     if (-not (Test-Path $path)) { throw "Support file not found: $path" }
     $resources["%APPDATA%\FEDAUTO\$file"] = $path
@@ -23,7 +23,7 @@ foreach ($file in '012-SharedFunctions.Ps1','013-ConfigFunctions.Ps1') {
 $command = Get-Command Invoke-PS2EXE
 $resourceParameter = if ($command.Parameters.ContainsKey('ResourceFile')) { 'ResourceFile' } elseif ($command.Parameters.ContainsKey('Include')) { 'Include' } elseif ($command.Parameters.ContainsKey('embedFiles')) { 'embedFiles' } else { $null }
 $splat = @{ InputFile = $inputFile; OutputFile = $OutputFile; NoConsole = $true; RequireAdmin = $false; Nested = $true }
-if ($resourceParameter) { $splat[$resourceParameter] = $resources } else { Write-Warning 'This PS2EXE version cannot embed support files; keep 012-SharedFunctions.Ps1 and 013-ConfigFunctions.ps1 beside the EXE.' }
+if ($resourceParameter) { $splat[$resourceParameter] = $resources } else { Write-Warning 'This PS2EXE version cannot embed support files; keep 012-SharedFunctions.Ps1, 013-ConfigFunctions.ps1, and 041-FederationFunctions.Ps1 beside the EXE.' }
 Invoke-PS2EXE @splat
 if (-not (Test-Path $OutputFile)) { throw "Build failed: $OutputFile was not created." }
 $outputDirectory = Split-Path -Parent $OutputFile

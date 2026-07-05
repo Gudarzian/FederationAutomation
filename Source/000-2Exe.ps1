@@ -1,4 +1,4 @@
-<#
+﻿<#
 Builds FA_Main.exe and bundles supporting scripts/resources so Config.json or Config.xlsx
 must sit beside the EXE at runtime.
 #>
@@ -41,8 +41,8 @@ $includes = @(
     '013-ConfigFunctions.ps1',
     '021-DownloadFunctions.Ps1',
     '031-ProcessFunctions.Ps1',
-    '041-FederationFunctions.Ps1',
-    '011-FunctionsDepository.Ps1'
+    '051-IfcDataExtractionFunctions.ps1',
+    '041-FederationFunctions.Ps1'
 )
 $includePaths = $includes | ForEach-Object { Join-Path $basePath $_ }
 
@@ -68,6 +68,7 @@ $functionFiles = @(
     '013-ConfigFunctions.ps1',
     '021-DownloadFunctions.Ps1',
     '031-ProcessFunctions.Ps1',
+    '051-IfcDataExtractionFunctions.ps1',
     '041-FederationFunctions.Ps1'
 )
 $compiledInput = Join-Path $bundleDir '006-Main.compiled.ps1'
@@ -150,3 +151,4 @@ if (-not (Test-Path $outputFile)) {
     throw "Build failed: output EXE was not created at '$outputFile'."
 }
 Write-Host "Built: $outputFile" -ForegroundColor Green
+

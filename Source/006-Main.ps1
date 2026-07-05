@@ -1,4 +1,4 @@
-<#
+﻿<#
 Main pipeline entry point.
 - Locates supporting scripts/resources (even when packaged as resources).
 - Orchestrates download, processing, federation, and publish steps.
@@ -11,15 +11,8 @@ param(
 )
 
 function Enable-FEDAUTOProcessModuleLoading {
-    try {
-        $processPolicy = Get-ExecutionPolicy -Scope Process
-        if ($processPolicy -notin @('RemoteSigned','Unrestricted')) {
-            Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned -Force -ErrorAction Stop
-        }
-    }
-    catch {
-        Write-Warning "Unable to set process execution policy to RemoteSigned. Module imports may be blocked: $($_.Exception.Message)"
-    }
+    # JSON/CSV build: intentionally does not change PowerShell execution policy.
+    return
 }
 
 Enable-FEDAUTOProcessModuleLoading
@@ -50,11 +43,11 @@ function Resolve-ConfigFilePath {
         [string]$RootPath
     )
     if ([string]::IsNullOrWhiteSpace($InputPath)) {
-        foreach ($defaultName in 'Config.json','Config.xlsx') {
+        foreach ($defaultName in 'Config.json') {
             $defaultPath = Join-Path $RootPath $defaultName
             if (Test-Path -LiteralPath $defaultPath -PathType Leaf) { return $defaultPath }
         }
-        throw "No default configuration was found in '$RootPath'. Expected Config.json or Config.xlsx."
+        throw "No default configuration was found in '$RootPath'. Expected Config.json."
     }
     $candidate = $InputPath.Trim()
     if ([System.IO.Path]::IsPathRooted($candidate)) { return $candidate }
@@ -74,12 +67,14 @@ $functionFiles = @(
     "013-ConfigFunctions.ps1",
     "021-DownloadFunctions.Ps1",
     "031-ProcessFunctions.Ps1",
+    "051-IfcDataExtractionFunctions.ps1",
     "041-FederationFunctions.Ps1"
 )
 $localPaths = $functionFiles | ForEach-Object { Join-Path $basePath $_ }
 $missingLocal = @($localPaths | Where-Object { -not (Test-Path $_) })
 $needsFunctions = -not (Get-Command Resolve-SupportFile -ErrorAction SilentlyContinue) -or
-    -not (Get-Command Update-IfcProjectProperties -ErrorAction SilentlyContinue)
+    -not (Get-Command Update-IfcProjectProperties -ErrorAction SilentlyContinue) -or
+    -not (Get-Command Invoke-IfcDataExtraction -ErrorAction SilentlyContinue)
 $forceReload = $PSCommandPath -and ($missingLocal.Count -eq 0)
 if ($needsFunctions -or $forceReload) {
     if ($missingLocal.Count -eq 0) {
@@ -203,6 +198,7 @@ $downloadRangeCache = @($pipelineConfiguration.Download)
 $pwAttributesListCache = @($pipelineConfiguration.PWAttributesList)
 $federationRangeCache = @($pipelineConfiguration.Federation)
 $wildcardSelectionCache = @($pipelineConfiguration.WildcardSelection)
+$ifcDataExtractionRulesCache = @($pipelineConfiguration.IfcDataExtractionRules)
 $lookupsRangeCache = @($pipelineConfiguration.Lookups)
 
 # Resolve log file path for the main transcript.
@@ -296,7 +292,7 @@ function Resolve-SettingEntry {
 
 $sourceFolderDefault = "SourceFiles"
 $processedDefault = "ProcessedIFC"
-$attributesDefault = "PWAttributes.xlsx"
+$attributesDefault = "PWAttributes.csv"
 $outputDefault = "Output"
 $logDefault = "Logs"
 $navisworksOptionsDefault = "NavisworksOptions.xml"
@@ -308,6 +304,9 @@ Resolve-SettingEntry -Settings $settingsCache -Names @('SourceFolder') -DefaultV
 Resolve-SettingEntry -Settings $settingsCache -Names @('ProcessedFolder') -DefaultValue $processedDefault -DisplayName 'ProcessedFolder'
 Resolve-SettingEntry -Settings $settingsCache -Names @('AttributesFile') -DefaultValue $attributesDefault -DisplayName 'AttributesFile'
 Resolve-SettingEntry -Settings $settingsCache -Names @('LogFolder') -DefaultValue $logDefault -DisplayName 'LogFolder'
+Resolve-SettingEntry -Settings $settingsCache -Names @('IfcDataExtractionFolder') -DefaultValue 'IFCDataExtraction' -DisplayName 'IfcDataExtractionFolder'
+Resolve-SettingEntry -Settings $settingsCache -Names @('IfcDataExtractionMaxFileSizeMB') -DefaultValue '150' -DisplayName 'IfcDataExtractionMaxFileSizeMB'
+Resolve-SettingEntry -Settings $settingsCache -Names @('IfcDataExtractionSkipIfCsvIsCurrent') -DefaultValue 'Yes' -DisplayName 'IfcDataExtractionSkipIfCsvIsCurrent'
 Resolve-SettingEntry -Settings $settingsCache -Names @('FederationOutputFolder') -DefaultValue $outputDefault -DisplayName 'FederationOutputFolder'
 Resolve-SettingEntry -Settings $settingsCache -Names @('DestinationFolder') -DefaultValue 'Destination' -DisplayName 'DestinationFolder'
 
@@ -382,6 +381,18 @@ Write-SettingsLine -Name "RunProcess" -Value $runProcessDisplay -Source $runProc
 if (-not $runProcessEnabled) {
     $SkipProcess = $true
 }
+
+$runIfcDataExtractionValue = Get-SettingValue -Settings $settingsCache -Names @('RunIfcDataExtraction')
+$runIfcDataExtractionEnabled = $false
+$runIfcDataExtractionSource = if ($runIfcDataExtractionValue) { "Settings" } else { if ($settingsMissing) { "Default (Settings missing)" } else { "Default" } }
+if ($runIfcDataExtractionValue) {
+    $normalizedIfcExtractionRun = $runIfcDataExtractionValue.ToString().Trim().ToLowerInvariant()
+    if ($normalizedIfcExtractionRun -notin @('no','n','false','0','ignore','')) {
+        $runIfcDataExtractionEnabled = $true
+    }
+}
+$runIfcDataExtractionDisplay = if ($runIfcDataExtractionEnabled) { if ($normalizedIfcExtractionRun -eq 'force') { "Force" } else { "Yes" } } else { "No" }
+Write-SettingsLine -Name "RunIfcDataExtraction" -Value $runIfcDataExtractionDisplay -Source $runIfcDataExtractionSource
 
 $fedInputSetting = Get-SettingValue -Settings $settingsCache -Names @('FederationInputFolder')
 $fedInputSource = if ($fedInputSetting) {
@@ -488,6 +499,19 @@ $reviztoPublishSource = if ($reviztoPublishSetting) { "Settings" } else { if ($s
 $reviztoPublishDisplay = if ($reviztoPublishSetting) { $reviztoPublishSetting } else { "No" }
 Write-SettingsLine -Name "ReviztoPublish" -Value $reviztoPublishDisplay -Source $reviztoPublishSource
 
+$reviztoPublishEnabled = $false
+if ($reviztoPublishSetting) {
+    $reviztoPublishEnabled = $reviztoPublishSetting.ToString().Trim().ToLowerInvariant() -notin @('no','n','false','0','ignore','')
+}
+$pipelineStagePlan = [ordered]@{
+    Download          = $runDownloadEnabled
+    IfcDataExtraction = $runIfcDataExtractionEnabled
+    Process           = $runProcessEnabled
+    Federation        = -not $runFederationDisabledBySetting
+    Revizto           = $reviztoPublishEnabled
+}
+Write-Host ("FEDAUTO_STAGE_PLAN|Download={0}|IfcDataExtraction={1}|Process={2}|Federation={3}|Revizto={4}" -f $pipelineStagePlan.Download, $pipelineStagePlan.IfcDataExtraction, $pipelineStagePlan.Process, $pipelineStagePlan.Federation, $pipelineStagePlan.Revizto)
+
 $reviztoAgeHours = Get-SettingValue -Settings $settingsCache -Names @('ReviztoMaxAgeHours','ReviztoPublishMaxAgeHours','ReviztoAgeHours','ReviztoMaxAgeHrs','ReviztoPublishAgeHours')
 $reviztoAgeMinutes = Get-SettingValue -Settings $settingsCache -Names @('ReviztoMaxAgeMinutes','ReviztoPublishMaxAgeMinutes','ReviztoAgeMinutes','ReviztoMaxAgeMins','ReviztoPublishAgeMinutes')
 if ($reviztoAgeHours) {
@@ -544,7 +568,7 @@ function Resolve-ProcessInputs {
     }
 
     $attributesFile = Get-SettingValue -Settings $Settings -Names @('AttributesFile')
-    if ([string]::IsNullOrWhiteSpace($attributesFile)) { $attributesFile = 'PWAttributes.xlsx' }
+    if ([string]::IsNullOrWhiteSpace($attributesFile)) { $attributesFile = 'PWAttributes.csv' }
     $attributesPath = if ([System.IO.Path]::IsPathRooted($attributesFile)) { $attributesFile } else { Join-Path $downloadFolder $attributesFile }
 
     $attributeRows = @()
@@ -638,6 +662,15 @@ try {
             $global:PWDownloadedCount = 0
             $global:PWDeletedCount = 0
         }
+    }
+    if ($runIfcDataExtractionEnabled) {
+        if ($downloadSkipForceOnlyMode) {
+            Write-Log -Message ("IFC data extraction is running using existing source files because download is unavailable ({0})." -f $downloadSkipReason) -Color 'Yellow' -Settings $settingsCache -LogsFolderOverride $LogsFolder -BasePath $basePath
+        }
+        $stepResult = Invoke-Step -Name "IFC Data Extraction" -Action {
+            Invoke-IfcDataExtraction -Settings $settingsCache -IfcDataExtractionRules $ifcDataExtractionRulesCache -LogsFolder $LogsFolder
+        }
+        if ($stepResult) { $stepResults.Add($stepResult) | Out-Null }
     }
     $processedCount = $null
     if (-not $SkipProcess) {
@@ -1123,3 +1156,6 @@ finally {
         Pop-Location -ErrorAction SilentlyContinue | Out-Null
     }
 }
+
+
+

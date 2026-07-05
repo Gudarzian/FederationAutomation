@@ -285,7 +285,7 @@ Resolves a Python executable path or command.
         if ($commandInfo.Definition) { return $commandInfo.Definition }
     }
     catch {
-        throw "Unable to locate Python executable '$ExecutableHint'. Install Python or update the Config.xlsx setting 'PythonExecutable'."
+        throw "Unable to locate Python executable '$ExecutableHint'. Install Python or update the Config.json setting 'PythonExecutable'."
     }
 
     throw "Unable to resolve Python executable '$ExecutableHint'."
@@ -414,33 +414,29 @@ function Split-IfcArguments {
             continue
         }
 
-        switch ($ch) {
-            "'" {
-                $inString = $true
-                [void]$sb.Append($ch)
-                $i++
-                continue
-            }
-            "(" {
-                $depth++
-                [void]$sb.Append($ch)
-                $i++
-                continue
-            }
-            ")" {
-                if ($depth -gt 0) { $depth-- }
-                [void]$sb.Append($ch)
-                $i++
-                continue
-            }
-            "," {
-                if ($depth -eq 0) {
-                    $args += $sb.ToString().Trim()
-                    [void]$sb.Clear()
-                    $i++
-                    continue
-                }
-            }
+        if ($ch -eq "'") {
+            $inString = $true
+            [void]$sb.Append($ch)
+            $i++
+            continue
+        }
+        elseif ($ch -eq "(") {
+            $depth++
+            [void]$sb.Append($ch)
+            $i++
+            continue
+        }
+        elseif ($ch -eq ")") {
+            if ($depth -gt 0) { $depth-- }
+            [void]$sb.Append($ch)
+            $i++
+            continue
+        }
+        elseif ($ch -eq "," -and $depth -eq 0) {
+            $args += $sb.ToString().Trim()
+            [void]$sb.Clear()
+            $i++
+            continue
         }
         [void]$sb.Append($ch)
         $i++
@@ -765,7 +761,7 @@ Processes IFC files and injects attributes based on configuration.
 #>
     [CmdletBinding()]
     param(
-        [string]$ConfigFile = "Config.xlsx",
+        [string]$ConfigFile = "Config.json",
         [array]$Settings = @(),
         [Parameter(Mandatory = $true)][array]$AttributeDefinitionRows,
         [Parameter(Mandatory = $true)][array]$FederationRows,
@@ -1106,13 +1102,28 @@ Processes IFC files and injects attributes based on configuration.
     $passthroughFiles = @(Get-ChildItem -Path $localFolder -File | Where-Object {
         $passthroughExtensions -contains $_.Extension.ToLowerInvariant()
     })
+    $processActionTotal = $ifcFiles.Count + $passthroughFiles.Count
+    $processActionCurrent = 0
+    function Write-IfcProcessProgress {
+        param(
+            [string]$Status,
+            [int]$Current,
+            [int]$Total,
+            [string]$FileName
+        )
+        $safeStatus = if ([string]::IsNullOrWhiteSpace($Status)) { 'Processing' } else { $Status }
+        $safeFile = if ($FileName) { $FileName -replace '\|', ' ' } else { '' }
+        Write-Host ("IFC_PROCESS_PROGRESS|Current={0}|Total={1}|Status={2}|File={3}" -f $Current, $Total, $safeStatus, $safeFile)
+    }
 
     if ($ifcFiles.Count -eq 0 -and $passthroughFiles.Count -eq 0) {
         Write-Warning "No federatable files found in source folder: $localFolder"
         return
     }
+    Write-IfcProcessProgress -Status 'Queued' -Current 0 -Total $processActionTotal -FileName ''
 
     foreach ($ifc in $ifcFiles) {
+        Write-IfcProcessProgress -Status 'Processing' -Current $processActionCurrent -Total $processActionTotal -FileName $ifc.Name
         $relativePath = $ifc.FullName.Substring($localFolder.TrimEnd('\').Length + 1)
         $sourceTimestamp = $ifc.LastWriteTimeUtc.ToString("o")
         $fileNameMatchesPattern = Test-FederationFileNameMatch -FileName $ifc.Name -PartDefinitions $federationMatchDefinitions
@@ -1131,6 +1142,8 @@ Processes IFC files and injects attributes based on configuration.
         if (-not $matchRow) {
             Write-Warning "No attribute workbook entry found for '$($ifc.Name)'; skipping."
             $skipped += $ifc.FullName
+            $processActionCurrent++
+            Write-IfcProcessProgress -Status 'Skipped' -Current $processActionCurrent -Total $processActionTotal -FileName $ifc.Name
             continue
         }
 
@@ -1220,6 +1233,8 @@ Processes IFC files and injects attributes based on configuration.
         if ($attributeValues.Count -eq 0) {
             Write-Warning "No attribute values found for '$($ifc.Name)' (all blank). Skipping."
             $skipped += $ifc.FullName
+            $processActionCurrent++
+            Write-IfcProcessProgress -Status 'Skipped' -Current $processActionCurrent -Total $processActionTotal -FileName $ifc.Name
             continue
         }
 
@@ -1275,7 +1290,11 @@ Processes IFC files and injects attributes based on configuration.
             }
         }
 
-        if (-not $shouldProcess) { continue }
+        if (-not $shouldProcess) {
+            $processActionCurrent++
+            Write-IfcProcessProgress -Status 'Skipped' -Current $processActionCurrent -Total $processActionTotal -FileName $ifc.Name
+            continue
+        }
 
         # Ensure destination path mirrors source structure
         $destinationPath = Join-Path $ProcessedFolder $relativePath
@@ -1328,6 +1347,9 @@ Processes IFC files and injects attributes based on configuration.
 
             Write-Host " >>>> Duration: $([math]::Round($processDuration.TotalSeconds,2)) seconds"
         }
+        $processActionCurrent++
+        $processStatus = if ($processSucceeded) { 'Processed' } else { 'Failed' }
+        Write-IfcProcessProgress -Status $processStatus -Current $processActionCurrent -Total $processActionTotal -FileName $ifc.Name
 
         if ($processSucceeded) {
             $processed += $destinationPath
@@ -1347,6 +1369,7 @@ Processes IFC files and injects attributes based on configuration.
     }
 
     foreach ($file in $passthroughFiles) {
+        Write-IfcProcessProgress -Status 'Copying' -Current $processActionCurrent -Total $processActionTotal -FileName $file.Name
         $relativePath = $file.FullName.Substring($localFolder.TrimEnd('\').Length + 1)
         $sourceTimestamp = $file.LastWriteTimeUtc.ToString("o")
         $sourceSize = $file.Length
@@ -1376,7 +1399,11 @@ Processes IFC files and injects attributes based on configuration.
             }
         }
 
-        if (-not $shouldCopy) { continue }
+        if (-not $shouldCopy) {
+            $processActionCurrent++
+            Write-IfcProcessProgress -Status 'Skipped' -Current $processActionCurrent -Total $processActionTotal -FileName $file.Name
+            continue
+        }
 
         $copyStart = Get-Date
         $copySucceeded = $false
@@ -1408,6 +1435,9 @@ Processes IFC files and injects attributes based on configuration.
             }
             Write-Host " >>>> Duration: $([math]::Round($copyDuration.TotalSeconds,2)) seconds"
         }
+        $processActionCurrent++
+        $copyStatus = if ($copySucceeded) { 'Copied' } else { 'Failed' }
+        Write-IfcProcessProgress -Status $copyStatus -Current $processActionCurrent -Total $processActionTotal -FileName $file.Name
 
         if ($copySucceeded) {
             $processed += $destinationPath
@@ -1458,4 +1488,5 @@ Processes IFC files and injects attributes based on configuration.
         $global:MainTranscriptActive = $false
     }
 }
+
 
