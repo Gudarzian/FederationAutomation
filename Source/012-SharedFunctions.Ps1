@@ -1,6 +1,6 @@
 ﻿<#
 Shared utilities for Federation Automation.
-- Excel helpers, path normalization, logging, and support utilities.
+- CSV/JSON helpers, path normalization, logging, and support utilities.
 #>
 
 function Ensure-ModuleAvailable {
@@ -23,6 +23,112 @@ JSON/CSV build: intentionally does not change PowerShell execution policy.
     param()
     return
 }
+function Get-FEDAUTOCurrentUserProfilePath {
+    [CmdletBinding()]
+    param()
+
+    if (-not [string]::IsNullOrWhiteSpace($env:USERPROFILE)) {
+        return $env:USERPROFILE.TrimEnd('\')
+    }
+    try {
+        $profilePath = [Environment]::GetFolderPath([Environment+SpecialFolder]::UserProfile)
+        if (-not [string]::IsNullOrWhiteSpace($profilePath)) { return $profilePath.TrimEnd('\') }
+    }
+    catch { }
+    return ''
+}
+
+function Join-FEDAUTOPathRemainder {
+    [CmdletBinding()]
+    param(
+        [string]$Root,
+        [string]$Remainder
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Remainder)) { return $Root }
+    return (Join-Path $Root $Remainder.TrimStart('\'))
+}
+
+function ConvertTo-FEDAUTOCurrentUserPath {
+<#
+Remaps portable user-profile cloud paths to the signed-in Windows user.
+This keeps configs shared between users working for OneDrive, SharePoint sync
+roots, and ACC Desktop Connector folders.
+#>
+    [CmdletBinding()]
+    param([string]$PathValue)
+
+    if ([string]::IsNullOrWhiteSpace($PathValue)) { return $PathValue }
+
+    $text = $PathValue.Trim()
+    $currentProfile = Get-FEDAUTOCurrentUserProfilePath
+    if ([string]::IsNullOrWhiteSpace($currentProfile)) { return $text }
+
+    if ($text -match '^~[\\/]?(?<rest>.*)$') {
+        return Join-FEDAUTOPathRemainder -Root $currentProfile -Remainder ($Matches['rest'] -replace '/', '\')
+    }
+
+    if ($text -match '^[A-Za-z]:[\\/]') {
+        $text = $text -replace '/', '\'
+    }
+
+    if ($text -notmatch '^(?<drive>[A-Za-z]:)\\Users\\(?<user>[^\\]+)(?<tail>\\.*)?$') {
+        return $text
+    }
+
+    $tail = $Matches['tail']
+    if ([string]::IsNullOrWhiteSpace($tail)) { return $text }
+    $tail = $tail.TrimStart('\')
+    if ([string]::IsNullOrWhiteSpace($tail)) { return $currentProfile }
+
+    $segments = @($tail -split '\\')
+    if ($segments.Count -eq 0 -or [string]::IsNullOrWhiteSpace($segments[0])) { return $text }
+    $firstSegment = $segments[0]
+    $afterFirst = if ($segments.Count -gt 1) { ($segments[1..($segments.Count - 1)] -join '\') } else { '' }
+
+    if ($firstSegment -like 'OneDrive*') {
+        $oneDriveRoots = @($env:OneDriveCommercial, $env:OneDriveConsumer, $env:OneDrive) |
+            Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
+            ForEach-Object { $_.TrimEnd('\') } |
+            Select-Object -Unique
+        $matchingRoot = $oneDriveRoots | Where-Object {
+            [IO.Path]::GetFileName($_).Equals($firstSegment, [StringComparison]::OrdinalIgnoreCase)
+        } | Select-Object -First 1
+        if (-not $matchingRoot) { $matchingRoot = Join-Path $currentProfile $firstSegment }
+        return Join-FEDAUTOPathRemainder -Root $matchingRoot -Remainder $afterFirst
+    }
+
+    if ($firstSegment.Equals('DC', [StringComparison]::OrdinalIgnoreCase) -and
+        $segments.Count -ge 2 -and
+        $segments[1].Equals('ACCDocs', [StringComparison]::OrdinalIgnoreCase)) {
+        $afterAccRoot = if ($segments.Count -gt 2) { ($segments[2..($segments.Count - 1)] -join '\') } else { '' }
+        return Join-FEDAUTOPathRemainder -Root (Join-Path $currentProfile 'DC\ACCDocs') -Remainder $afterAccRoot
+    }
+
+    if ($firstSegment.Equals('Autodesk Docs', [StringComparison]::OrdinalIgnoreCase) -or
+        $firstSegment.Equals('ACCDocs', [StringComparison]::OrdinalIgnoreCase)) {
+        return Join-FEDAUTOPathRemainder -Root (Join-Path $currentProfile $firstSegment) -Remainder $afterFirst
+    }
+
+    $sharePointRootNames = New-Object System.Collections.Generic.List[string]
+    foreach ($oneDriveRoot in @($env:OneDriveCommercial, $env:OneDrive)) {
+        if ([string]::IsNullOrWhiteSpace($oneDriveRoot)) { continue }
+        $leaf = [IO.Path]::GetFileName($oneDriveRoot.TrimEnd('\'))
+        if ($leaf.StartsWith('OneDrive - ', [StringComparison]::OrdinalIgnoreCase)) {
+            $name = $leaf.Substring(11)
+            if (-not [string]::IsNullOrWhiteSpace($name) -and -not $sharePointRootNames.Contains($name)) {
+                [void]$sharePointRootNames.Add($name)
+            }
+        }
+    }
+    if ($firstSegment.Equals('SharePoint', [StringComparison]::OrdinalIgnoreCase) -or
+        @($sharePointRootNames).Where({ $_.Equals($firstSegment, [StringComparison]::OrdinalIgnoreCase) }).Count -gt 0) {
+        return Join-FEDAUTOPathRemainder -Root (Join-Path $currentProfile $firstSegment) -Remainder $afterFirst
+    }
+
+    return $text
+}
+
 function Resolve-RelativePath {
 <#
 Resolves a relative path against a root path; returns rooted paths unchanged.
@@ -33,6 +139,7 @@ Resolves a relative path against a root path; returns rooted paths unchanged.
         [string]$Root
     )
     if ([string]::IsNullOrWhiteSpace($PathValue)) { return $PathValue }
+    $PathValue = CureFolderPath $PathValue
     if ([System.IO.Path]::IsPathRooted($PathValue)) { return $PathValue }
     return (Join-Path $Root $PathValue)
 }
@@ -50,7 +157,8 @@ early during startup.
     $text = $FolderPath.Trim()
     $text = $text.Trim('"', "'")
     if ([string]::IsNullOrWhiteSpace($text)) { return '' }
-    return [Environment]::ExpandEnvironmentVariables($text)
+    $text = [Environment]::ExpandEnvironmentVariables($text)
+    return (ConvertTo-FEDAUTOCurrentUserPath $text)
 }
 
 function Get-FederatableModelExtensions {
@@ -69,7 +177,7 @@ Model.nwc and Model.ifc.nwc style cache names.
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)][string]$NwcName,
-        [Parameter(Mandatory = $true)][array]$SourceNames,
+        [Parameter(Mandatory = $true)][AllowEmptyCollection()][array]$SourceNames,
         [string[]]$SourceExtensions = @('.ifc', '.dwg', '.dgn', '.rvt')
     )
 
@@ -339,7 +447,8 @@ Resolves a support file path, extracting embedded resources when needed.
         Select-Object -First 1
     if (-not $resourceName) { return $candidate }
 
-    $tempDir = Join-Path $env:APPDATA "Pythonx"
+    $supportRoot = if (-not [string]::IsNullOrWhiteSpace($env:LOCALAPPDATA)) { $env:LOCALAPPDATA } else { $env:TEMP }
+    $tempDir = Join-Path $supportRoot "Federation-Automation\SupportFiles"
     if (-not (Test-Path $tempDir)) {
         New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
     }
@@ -380,7 +489,7 @@ Normalizes an optional XML file setting.
         Split-Path -Parent ([System.Reflection.Assembly]::GetEntryAssembly().Location)
     }
 
-    $text = Normalize-ExcelText -Text $Value
+    $text = CureFolderPath (Normalize-ExcelText -Text $Value)
     if ([string]::IsNullOrWhiteSpace($text)) {
         return [pscustomobject]@{
             RequestedValue = $null
@@ -425,9 +534,15 @@ Wraps a pipeline step with a standard header and execution.
         & $Action
     }
     catch {
-        $message = "ERROR: Step '$Name' failed: $_"
+        $errorText = if ($_.Exception -and -not [string]::IsNullOrWhiteSpace($_.Exception.Message)) {
+            $_.Exception.Message
+        }
+        else {
+            $_.ToString()
+        }
+        $message = "ERROR: Step '$Name' failed: $errorText"
         Write-Host $message -ForegroundColor Red
-        throw
+        throw $message
     }
     finally {
         $timer.Stop()

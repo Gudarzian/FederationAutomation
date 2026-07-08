@@ -43,7 +43,11 @@ The Attributes tab defines which source metadata fields are exported and which f
 
 ### IFC Data Extraction
 
-Data Extraction exports object-level IFC data to CSV. It is a reporting step and does not modify model files. Enabled rules filter which IFC files are extracted; if no enabled rules exist, every IFC in the configured source folder can be extracted.
+Data Extraction exports object-level IFC data to CSV. It is a reporting step and does not modify model files. Enabled rules filter which IFC files, IFC tabs/property sets, viewer-style source groups, and attribute names are exported. Filters are comma-separated wildcard patterns. The first enabled rule matching a file is used; later matching rules for that file are ignored with a warning. If no enabled rules exist, every IFC in the configured source folder can be extracted with all available attributes.
+
+The exported CSV keeps fixed `Object` identity columns at the start of every file. Tab filters apply to IFC property/quantity sets and to the viewer-style groups `Item`, `Element ID`, `Element`, and `Material`, so filters such as `Material, BaseQuantities, Element` match the same user-facing groups shown in Navisworks/Forma-style property panels.
+
+This stage uses Python and IfcOpenShell. Preflight warns when Python is not detected; locked-down machines may need Python installed manually before extraction can run.
 
 ### IFC Processing
 

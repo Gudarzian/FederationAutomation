@@ -1,5 +1,5 @@
 ﻿<#
-Builds FA_Main.exe and bundles supporting scripts/resources so Config.json or Config.xlsx
+Builds FA_Main.exe and bundles supporting scripts/resources so Config.json
 must sit beside the EXE at runtime.
 #>
 [CmdletBinding()]
@@ -35,6 +35,44 @@ if ($outputDir -and -not (Test-Path $outputDir)) {
     New-Item -Path $outputDir -ItemType Directory -Force | Out-Null
 }
 
+function New-FEDAUTOBuildVersion {
+    param(
+        [Parameter(Mandatory = $true)][string]$ExeName,
+        [Parameter(Mandatory = $true)][string]$RootPath
+    )
+
+    $statePath = Join-Path $RootPath 'BuildVersions.json'
+    $today = Get-Date -Format 'yyyyMMdd'
+    $state = [pscustomobject]@{ Date = $today; LastIndex = 0; Builds = @() }
+    if (Test-Path -LiteralPath $statePath -PathType Leaf) {
+        try {
+            $existing = Get-Content -LiteralPath $statePath -Raw | ConvertFrom-Json -ErrorAction Stop
+            if ($existing -and $existing.Date -eq $today) { $state = $existing }
+        }
+        catch {
+            Write-Warning "Could not read build-version state '$statePath'. Starting a new counter for today. Error: $_"
+        }
+    }
+
+    $lastIndex = 0
+    if ($state.PSObject.Properties.Name -contains 'LastIndex') { [void][int]::TryParse($state.LastIndex.ToString(), [ref]$lastIndex) }
+    $nextIndex = $lastIndex + 1
+    $version = '{0}-{1:D3}' -f $today, $nextIndex
+    $builds = @()
+    if ($state.PSObject.Properties.Name -contains 'Builds') { $builds = @($state.Builds) }
+    $builds += [pscustomobject]@{
+        ExeName = $ExeName
+        Version = $version
+        BuiltAt = (Get-Date).ToString('yyyy-MM-dd HH:mm:ss')
+    }
+    [pscustomobject]@{
+        Date = $today
+        LastIndex = $nextIndex
+        Builds = @($builds | Select-Object -Last 200)
+    } | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $statePath -Encoding UTF8
+    return $version
+}
+
 # Files to bundle into the EXE
 $includes = @(
     '012-SharedFunctions.Ps1',
@@ -58,7 +96,7 @@ foreach ($path in $includePaths) {
     $dest = Join-Path $bundleDir (Split-Path $path -Leaf)
     Copy-Item -Path $path -Destination $dest -Force
     $leaf = Split-Path $dest -Leaf
-    $target = "%APPDATA%\\Pythonx\\$leaf"
+    $target = "%LOCALAPPDATA%\\Federation-Automation\\SupportFiles\\$leaf"
     $stagedIncludes[$target] = $dest
 }
 
@@ -107,7 +145,15 @@ if ($null -eq $paramEnd) {
 
 $header = $mainLines[0..$paramEnd] -join "`r`n"
 $body = $mainLines[($paramEnd + 1)..($mainLines.Count - 1)] -join "`r`n"
-$compiledContent = $header + "`r`n`r`n" + $functionsContent + "`r`n`r`n" + $body
+$exeName = [IO.Path]::GetFileName($OutputFile)
+$buildVersion = New-FEDAUTOBuildVersion -ExeName $exeName -RootPath $basePath
+$buildTime = (Get-Date).ToString('yyyy-MM-dd HH:mm:ss')
+$buildMetadata = @"
+`$script:FEDAUTOExecutableName = '$exeName'
+`$script:FEDAUTOExecutableBuildVersion = '$buildVersion'
+`$script:FEDAUTOExecutableBuildTime = '$buildTime'
+"@
+$compiledContent = $header + "`r`n`r`n" + $buildMetadata + "`r`n`r`n" + $functionsContent + "`r`n`r`n" + $body
 Set-Content -Path $compiledInput -Value $compiledContent -Encoding utf8
 $inputFile = $compiledInput
 
@@ -151,4 +197,4 @@ if (-not (Test-Path $outputFile)) {
     throw "Build failed: output EXE was not created at '$outputFile'."
 }
 Write-Host "Built: $outputFile" -ForegroundColor Green
-
+Write-Host "Build version: $buildVersion" -ForegroundColor Green

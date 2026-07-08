@@ -41,6 +41,7 @@ function Get-FEDAUTOIfcPythonExtractorScript {
     return @'
 import argparse
 import csv
+import fnmatch
 import json
 import os
 import sys
@@ -71,11 +72,102 @@ def scalar(value):
     return str(value)
 
 
+def split_terms(value):
+    if not value:
+        return []
+    return [item.strip() for item in value.split(",") if item.strip()]
+
+
+def wildcard_match(value, patterns):
+    text = str(value or "").lower()
+    return any(fnmatch.fnmatchcase(text, pattern.lower()) for pattern in patterns)
+
+
+def filter_allows(value, inclusions, exclusions):
+    include_match = not inclusions or wildcard_match(value, inclusions)
+    if not include_match:
+        return False
+    return not wildcard_match(value, exclusions)
+
+
+def entity_name(entity):
+    if entity is None:
+        return ""
+    return getattr(entity, "Name", None) or getattr(entity, "LongName", None) or ""
+
+
+def type_name(product):
+    try:
+        type_entity = ifcopenshell.util.element.get_type(product)
+    except Exception:
+        type_entity = None
+    return entity_name(type_entity)
+
+
+def predefined_type(product):
+    try:
+        return ifcopenshell.util.element.get_predefined_type(product) or ""
+    except Exception:
+        return getattr(product, "PredefinedType", "") or ""
+
+
+def collect_material_names(value, seen=None):
+    if seen is None:
+        seen = set()
+    names = []
+    if value is None:
+        return names
+    marker = id(value)
+    if marker in seen:
+        return names
+    seen.add(marker)
+    if isinstance(value, (list, tuple, set)):
+        for item in value:
+            names.extend(collect_material_names(item, seen))
+        return names
+    name = getattr(value, "Name", None)
+    if name:
+        names.append(str(name))
+    for attribute in (
+        "ForLayerSet",
+        "MaterialLayers",
+        "MaterialProfiles",
+        "Materials",
+        "Material",
+        "RelatingMaterial",
+    ):
+        child = getattr(value, attribute, None)
+        if child is not None:
+            names.extend(collect_material_names(child, seen))
+    unique = []
+    for item in names:
+        if item and item not in unique:
+            unique.append(item)
+    return unique
+
+
+def material_name(product):
+    try:
+        material = ifcopenshell.util.element.get_material(product, should_skip_usage=True)
+    except Exception:
+        material = None
+    return "; ".join(collect_material_names(material))
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--ifc", required=True)
     parser.add_argument("--csv", required=True)
+    parser.add_argument("--tab-inclusions", default="")
+    parser.add_argument("--tab-exclusions", default="")
+    parser.add_argument("--attribute-inclusions", default="")
+    parser.add_argument("--attribute-exclusions", default="")
     args = parser.parse_args()
+
+    tab_inclusions = split_terms(args.tab_inclusions)
+    tab_exclusions = split_terms(args.tab_exclusions)
+    attribute_inclusions = split_terms(args.attribute_inclusions)
+    attribute_exclusions = split_terms(args.attribute_exclusions)
 
     model = ifcopenshell.open(args.ifc)
     products = [
@@ -93,13 +185,54 @@ def main():
     column_keys = {column[2] for column in columns}
     rows = []
 
+    def add_filtered(row, source_name, attribute_name, value):
+        if not filter_allows(source_name, tab_inclusions, tab_exclusions):
+            return
+        if not filter_allows(attribute_name, attribute_inclusions, attribute_exclusions):
+            return
+        key = source_name + "||" + attribute_name
+        if key not in column_keys:
+            columns.append((source_name, attribute_name, key))
+            column_keys.add(key)
+        row[key] = scalar(value)
+
     for product in products:
+        global_id = getattr(product, "GlobalId", "") or ""
+        product_name = getattr(product, "Name", "") or ""
+        product_type_name = type_name(product)
+        material_text = material_name(product)
         row = {
             "Object||EntityId": "#" + str(product.id()),
-            "Object||GlobalId": getattr(product, "GlobalId", "") or "",
-            "Object||Name": getattr(product, "Name", "") or "",
+            "Object||GlobalId": global_id,
+            "Object||Name": product_name,
             "Object||Class": product.is_a(),
         }
+
+        add_filtered(row, "Item", "Name", product_name)
+        add_filtered(row, "Item", "Type", product_type_name)
+        add_filtered(row, "Item", "Material", material_text)
+        add_filtered(row, "Item", "Source File", os.path.basename(args.ifc))
+
+        add_filtered(row, "Element ID", "Name", global_id)
+
+        add_filtered(row, "Element", "IfcClass", product.is_a())
+        add_filtered(row, "Element", "IfcGUID", global_id)
+        add_filtered(row, "Element", "GlobalId", global_id)
+        add_filtered(row, "Element", "Name", product_name)
+        for attribute_name in (
+            "ObjectType",
+            "Tag",
+            "Description",
+            "OverallHeight",
+            "OverallWidth",
+            "OverallDepth",
+        ):
+            if hasattr(product, attribute_name):
+                add_filtered(row, "Element", attribute_name, getattr(product, attribute_name, ""))
+        add_filtered(row, "Element", "PredefinedType", predefined_type(product))
+
+        add_filtered(row, "Material", "Name", material_text)
+
         psets = ifcopenshell.util.element.get_psets(product, psets_only=False, qtos_only=False)
         for source_name, attributes in psets.items():
             if not isinstance(attributes, dict):
@@ -107,11 +240,7 @@ def main():
             for attribute_name, value in attributes.items():
                 if attribute_name == "id" or isinstance(value, dict):
                     continue
-                key = source_name + "||" + attribute_name
-                if key not in column_keys:
-                    columns.append((source_name, attribute_name, key))
-                    column_keys.add(key)
-                row[key] = scalar(value)
+                add_filtered(row, source_name, attribute_name, value)
         rows.append(row)
 
     out_dir = os.path.dirname(args.csv)
@@ -258,7 +387,11 @@ function Export-IfcObjectAttributesCsvPython {
     param(
         [Parameter(Mandatory = $true)][string]$IfcPath,
         [Parameter(Mandatory = $true)][string]$CsvPath,
-        [Parameter(Mandatory = $true)][string]$PythonPath
+        [Parameter(Mandatory = $true)][string]$PythonPath,
+        [string]$TabInclusions = '',
+        [string]$TabExclusions = '',
+        [string]$AttributeInclusions = '',
+        [string]$AttributeExclusions = ''
     )
 
     $tempRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("FEDAUTO-IfcExtract-{0}" -f ([guid]::NewGuid().ToString('N')))
@@ -266,7 +399,12 @@ function Export-IfcObjectAttributesCsvPython {
     try {
         New-Item -ItemType Directory -Path $tempRoot -Force | Out-Null
         [System.IO.File]::WriteAllText($scriptPath, (Get-FEDAUTOIfcPythonExtractorScript), [System.Text.UTF8Encoding]::new($false))
-        $result = Invoke-FEDAUTOExternalCommand -FilePath $PythonPath -ArgumentList @($scriptPath,'--ifc',$IfcPath,'--csv',$CsvPath)
+        $arguments = @($scriptPath, '--ifc', $IfcPath, '--csv', $CsvPath)
+        if (-not [string]::IsNullOrWhiteSpace($TabInclusions)) { $arguments += @('--tab-inclusions', $TabInclusions) }
+        if (-not [string]::IsNullOrWhiteSpace($TabExclusions)) { $arguments += @('--tab-exclusions', $TabExclusions) }
+        if (-not [string]::IsNullOrWhiteSpace($AttributeInclusions)) { $arguments += @('--attribute-inclusions', $AttributeInclusions) }
+        if (-not [string]::IsNullOrWhiteSpace($AttributeExclusions)) { $arguments += @('--attribute-exclusions', $AttributeExclusions) }
+        $result = Invoke-FEDAUTOExternalCommand -FilePath $PythonPath -ArgumentList $arguments
         if ($result.ExitCode -ne 0) {
             throw ("Python IFC extraction failed. {0} {1}" -f $result.StdOut, $result.StdErr)
         }
@@ -312,6 +450,29 @@ function Get-FEDAUTOIfcExtractionRuleTerms {
     return @($Value.ToString() -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ })
 }
 
+function Get-FEDAUTOIfcExtractionRuleValue {
+    param(
+        $Rule,
+        [Parameter(Mandatory = $true)][string]$Name
+    )
+    if ($null -eq $Rule) { return '' }
+    if ($Rule.PSObject.Properties.Name -contains $Name) {
+        $value = $Rule.$Name
+        if ($null -ne $value) { return $value.ToString() }
+    }
+    return ''
+}
+
+function Test-FEDAUTOIfcExtractionPatternMatch {
+    param(
+        [string]$Value,
+        [string[]]$Patterns
+    )
+    if (-not $Patterns -or $Patterns.Count -eq 0) { return $false }
+    $text = if ($null -eq $Value) { '' } else { $Value }
+    return @(($Patterns | Where-Object { $text -like $_ })).Count -gt 0
+}
+
 function Test-FEDAUTOIfcExtractionRuleEnabled {
     param($Rule)
     if ($null -eq $Rule) { return $false }
@@ -320,24 +481,119 @@ function Test-FEDAUTOIfcExtractionRuleEnabled {
     return $runText -in @('yes','y','true','1')
 }
 
+function Test-FEDAUTOIfcExtractionRuleMatchesFile {
+    param(
+        [Parameter(Mandatory = $true)][System.IO.FileInfo]$File,
+        [Parameter(Mandatory = $true)]$Rule
+    )
+    $inclusionText = Get-FEDAUTOIfcExtractionRuleValue -Rule $Rule -Name 'FileInclusions'
+    $exclusionText = Get-FEDAUTOIfcExtractionRuleValue -Rule $Rule -Name 'FileExclusions'
+    $inclusions = @(Get-FEDAUTOIfcExtractionRuleTerms -Value $inclusionText)
+    $exclusions = @(Get-FEDAUTOIfcExtractionRuleTerms -Value $exclusionText)
+    $includeMatch = ($inclusions.Count -eq 0) -or (Test-FEDAUTOIfcExtractionPatternMatch -Value $File.Name -Patterns $inclusions)
+    if (-not $includeMatch) { return $false }
+    return -not (Test-FEDAUTOIfcExtractionPatternMatch -Value $File.Name -Patterns $exclusions)
+}
+
+function Get-FEDAUTOIfcExtractionRuleFilterHash {
+    param($Rule)
+    if ($null -eq $Rule) { return 'NoActiveRules:v1' }
+    $payload = [ordered]@{
+        FileInclusions      = Get-FEDAUTOIfcExtractionRuleValue -Rule $Rule -Name 'FileInclusions'
+        FileExclusions      = Get-FEDAUTOIfcExtractionRuleValue -Rule $Rule -Name 'FileExclusions'
+        TabInclusions       = Get-FEDAUTOIfcExtractionRuleValue -Rule $Rule -Name 'TabInclusions'
+        TabExclusions       = Get-FEDAUTOIfcExtractionRuleValue -Rule $Rule -Name 'TabExclusions'
+        AttributeInclusions = Get-FEDAUTOIfcExtractionRuleValue -Rule $Rule -Name 'AttributeInclusions'
+        AttributeExclusions = Get-FEDAUTOIfcExtractionRuleValue -Rule $Rule -Name 'AttributeExclusions'
+    }
+    $json = $payload | ConvertTo-Json -Compress -Depth 4
+    $bytes = [System.Text.Encoding]::UTF8.GetBytes($json)
+    $hashBytes = [System.Security.Cryptography.SHA256]::Create().ComputeHash($bytes)
+    return ([System.BitConverter]::ToString($hashBytes) -replace '-', '').ToLowerInvariant()
+}
+
+function Get-FEDAUTOIfcExtractionSelectedRule {
+    param(
+        [Parameter(Mandatory = $true)][System.IO.FileInfo]$File,
+        [array]$Rules = @()
+    )
+
+    $activeRules = @($Rules | Where-Object { Test-FEDAUTOIfcExtractionRuleEnabled -Rule $_ })
+    if ($activeRules.Count -eq 0) {
+        return [pscustomobject]@{
+            Selected = $true
+            Rule = $null
+            RuleIndex = $null
+            IgnoredRuleIndexes = @()
+            RuleFilterHash = Get-FEDAUTOIfcExtractionRuleFilterHash -Rule $null
+            ColumnFiltersActive = $false
+            TabInclusions = ''
+            TabExclusions = ''
+            AttributeInclusions = ''
+            AttributeExclusions = ''
+        }
+    }
+
+    $matches = New-Object System.Collections.Generic.List[object]
+    for ($index = 0; $index -lt $Rules.Count; $index++) {
+        $rule = $Rules[$index]
+        if (-not (Test-FEDAUTOIfcExtractionRuleEnabled -Rule $rule)) { continue }
+        if (Test-FEDAUTOIfcExtractionRuleMatchesFile -File $File -Rule $rule) {
+            $matches.Add([pscustomobject]@{ Rule=$rule; RuleIndex=($index + 1) }) | Out-Null
+        }
+    }
+    if ($matches.Count -eq 0) {
+        return [pscustomobject]@{ Selected = $false; Rule = $null; RuleIndex = $null; IgnoredRuleIndexes = @() }
+    }
+
+    $selected = $matches[0]
+    $tabInclusions = Get-FEDAUTOIfcExtractionRuleValue -Rule $selected.Rule -Name 'TabInclusions'
+    $tabExclusions = Get-FEDAUTOIfcExtractionRuleValue -Rule $selected.Rule -Name 'TabExclusions'
+    $attributeInclusions = Get-FEDAUTOIfcExtractionRuleValue -Rule $selected.Rule -Name 'AttributeInclusions'
+    $attributeExclusions = Get-FEDAUTOIfcExtractionRuleValue -Rule $selected.Rule -Name 'AttributeExclusions'
+    return [pscustomobject]@{
+        Selected = $true
+        Rule = $selected.Rule
+        RuleIndex = $selected.RuleIndex
+        IgnoredRuleIndexes = @($matches | Select-Object -Skip 1 | Select-Object -ExpandProperty RuleIndex)
+        RuleFilterHash = Get-FEDAUTOIfcExtractionRuleFilterHash -Rule $selected.Rule
+        ColumnFiltersActive = -not (
+            [string]::IsNullOrWhiteSpace($tabInclusions) -and
+            [string]::IsNullOrWhiteSpace($tabExclusions) -and
+            [string]::IsNullOrWhiteSpace($attributeInclusions) -and
+            [string]::IsNullOrWhiteSpace($attributeExclusions)
+        )
+        TabInclusions = $tabInclusions
+        TabExclusions = $tabExclusions
+        AttributeInclusions = $attributeInclusions
+        AttributeExclusions = $attributeExclusions
+    }
+}
+
 function Test-FEDAUTOIfcExtractionFileSelected {
     param(
         [Parameter(Mandatory = $true)][System.IO.FileInfo]$File,
         [array]$Rules = @()
     )
-    $activeRules = @($Rules | Where-Object { Test-FEDAUTOIfcExtractionRuleEnabled -Rule $_ })
-    if ($activeRules.Count -eq 0) { return $true }
-    foreach ($rule in $activeRules) {
-        $inclusionText = if ($rule.PSObject.Properties.Name -contains 'Inclusions') { $rule.Inclusions } elseif ($rule.PSObject.Properties.Name -contains 'Inclusion') { $rule.Inclusion } else { $null }
-        $exclusionText = if ($rule.PSObject.Properties.Name -contains 'Exclusions') { $rule.Exclusions } elseif ($rule.PSObject.Properties.Name -contains 'Exclusion') { $rule.Exclusion } else { $null }
-        $inclusions = @(Get-FEDAUTOIfcExtractionRuleTerms -Value $inclusionText)
-        $exclusions = @(Get-FEDAUTOIfcExtractionRuleTerms -Value $exclusionText)
-        $includeMatch = ($inclusions.Count -eq 0) -or (($inclusions | Where-Object { $File.Name -like $_ }).Count -gt 0)
-        if (-not $includeMatch) { continue }
-        $excludeMatch = ($exclusions | Where-Object { $File.Name -like $_ }).Count -gt 0
-        if (-not $excludeMatch) { return $true }
+    return (Get-FEDAUTOIfcExtractionSelectedRule -File $File -Rules $Rules).Selected
+}
+
+function ConvertTo-FEDAUTOIfcRelativePath {
+    param(
+        [string]$Path,
+        [string]$RootFolder
+    )
+    if ([string]::IsNullOrWhiteSpace($Path) -or [string]::IsNullOrWhiteSpace($RootFolder)) { return $Path }
+    try {
+        $fullPath = [System.IO.Path]::GetFullPath($Path)
+        $fullRoot = [System.IO.Path]::GetFullPath($RootFolder).TrimEnd('\')
+        if ($fullPath.Equals($fullRoot, [System.StringComparison]::OrdinalIgnoreCase)) { return '' }
+        if ($fullPath.StartsWith($fullRoot + '\', [System.StringComparison]::OrdinalIgnoreCase)) {
+            return $fullPath.Substring($fullRoot.Length + 1)
+        }
     }
-    return $false
+    catch { }
+    return $Path
 }
 
 function Invoke-IfcDataExtraction {
@@ -383,6 +639,27 @@ function Invoke-IfcDataExtraction {
     if (-not (Test-Path $exportFolder -PathType Container)) {
         New-Item -ItemType Directory -Path $exportFolder -Force | Out-Null
     }
+    $summaryPath = Join-Path $exportFolder 'ifc-data-extraction-summary.json'
+    $previousExtractionRecords = @{}
+    if (Test-Path -LiteralPath $summaryPath -PathType Leaf) {
+        try {
+            $previousSummary = Get-Content -LiteralPath $summaryPath -Raw | ConvertFrom-Json -ErrorAction Stop
+            foreach ($record in @($previousSummary.Files)) {
+                if (-not $record) { continue }
+                $key = ''
+                if ($record.PSObject.Properties.Name -contains 'IfcRelativePath' -and -not [string]::IsNullOrWhiteSpace($record.IfcRelativePath)) {
+                    $key = $record.IfcRelativePath.ToString().ToLowerInvariant()
+                }
+                elseif ($record.PSObject.Properties.Name -contains 'IfcPath' -and -not [string]::IsNullOrWhiteSpace($record.IfcPath)) {
+                    $key = [System.IO.Path]::GetFileName($record.IfcPath).ToLowerInvariant()
+                }
+                if (-not [string]::IsNullOrWhiteSpace($key)) { $previousExtractionRecords[$key] = $record }
+            }
+        }
+        catch {
+            Write-Warning ("Unable to read previous IFC data extraction summary for filter cache checks. Existing CSV files will be treated as stale when filters are active. Error: {0}" -f $_.Exception.Message)
+        }
+    }
 
     Write-Host "Source folder: $sourceFolder"
     Write-Host "Export folder: $exportFolder"
@@ -396,29 +673,48 @@ function Invoke-IfcDataExtraction {
     }
 
     $allIfcFiles = @(Get-ChildItem -Path $sourceFolder -Filter '*.ifc' -File)
-    $ifcFiles = @($allIfcFiles | Where-Object { Test-FEDAUTOIfcExtractionFileSelected -File $_ -Rules $IfcDataExtractionRules })
-    $ruleSkippedCount = $allIfcFiles.Count - $ifcFiles.Count
+    $selectedIfcFiles = New-Object System.Collections.Generic.List[object]
+    $ruleSkippedCount = 0
+    $ruleConflictCount = 0
+    foreach ($candidateIfc in $allIfcFiles) {
+        $selection = Get-FEDAUTOIfcExtractionSelectedRule -File $candidateIfc -Rules $IfcDataExtractionRules
+        if (-not $selection.Selected) {
+            $ruleSkippedCount++
+            continue
+        }
+        if ($selection.IgnoredRuleIndexes -and $selection.IgnoredRuleIndexes.Count -gt 0) {
+            $ruleConflictCount++
+            Write-Warning ("IFC data extraction rule conflict for '{0}': rule {1} matched first; later matching rule(s) {2} ignored for this file." -f $candidateIfc.Name, $selection.RuleIndex, ($selection.IgnoredRuleIndexes -join ', '))
+        }
+        $selectedIfcFiles.Add([pscustomobject]@{ File=$candidateIfc; Selection=$selection }) | Out-Null
+    }
     if ($ruleSkippedCount -gt 0) {
         Write-Host ("IFC data extraction rules excluded {0} IFC file(s)." -f $ruleSkippedCount) -ForegroundColor Yellow
     }
     $exports = New-Object System.Collections.Generic.List[object]
     $skipped = New-Object System.Collections.Generic.List[object]
     $failures = New-Object System.Collections.Generic.List[object]
-    $eligibleFileCount = @($ifcFiles | Where-Object { $_.Length -le $maxFileSizeBytes }).Count
+    $eligibleFileCount = @($selectedIfcFiles | Where-Object { $_.File.Length -le $maxFileSizeBytes }).Count
     $pythonPath = $null
     if ($eligibleFileCount -gt 0) { $pythonPath = Ensure-FEDAUTOIfcPythonEnvironment }
     $processedFileIndex = 0
-    foreach ($ifc in $ifcFiles) {
+    foreach ($ifcEntry in $selectedIfcFiles) {
         $processedFileIndex++
+        $ifc = $ifcEntry.File
+        $selection = $ifcEntry.Selection
+        $ifcRelativePath = ConvertTo-FEDAUTOIfcRelativePath -Path $ifc.FullName -RootFolder $sourceFolder
         if ($ifc.Length -gt $maxFileSizeBytes) {
             $message = ("Skipping IFC data extraction for '{0}' because file size {1} MB exceeds the configured limit of {2} MB." -f $ifc.Name, ([Math]::Round($ifc.Length / 1MB, 2)), $maxFileSizeDisplayMb)
             Write-Warning $message
-            Write-FEDAUTOIfcExtractionProgress -Current $processedFileIndex -Total $ifcFiles.Count -Status 'Skipped' -FileName $ifc.Name
-            Write-FEDAUTOIfcExtractionFileResult -Index $processedFileIndex -Total $ifcFiles.Count -Status 'Skipped' -FileName $ifc.Name -Seconds 0
+            Write-FEDAUTOIfcExtractionProgress -Current $processedFileIndex -Total $selectedIfcFiles.Count -Status 'Skipped' -FileName $ifc.Name
+            Write-FEDAUTOIfcExtractionFileResult -Index $processedFileIndex -Total $selectedIfcFiles.Count -Status 'Skipped' -FileName $ifc.Name -Seconds 0
             $skipped.Add([pscustomobject]@{
                 IfcPath       = $ifc.FullName
+                IfcRelativePath = $ifcRelativePath
                 SizeBytes     = $ifc.Length
                 MaxSizeBytes  = $maxFileSizeBytes
+                RuleIndex     = $selection.RuleIndex
+                RuleFilterHash = $selection.RuleFilterHash
                 Reason        = $message
             }) | Out-Null
             continue
@@ -427,33 +723,58 @@ function Invoke-IfcDataExtraction {
         if ($skipIfCsvIsCurrent -and -not $forceExtraction -and (Test-Path $csvPath -PathType Leaf)) {
             $csvItem = Get-Item -LiteralPath $csvPath
             if ($csvItem.LastWriteTimeUtc -ge $ifc.LastWriteTimeUtc) {
-                $message = ("Skipping IFC data extraction for '{0}' because existing CSV is current." -f $ifc.Name)
-                Write-Host $message -ForegroundColor Yellow
-                Write-FEDAUTOIfcExtractionProgress -Current $processedFileIndex -Total $ifcFiles.Count -Status 'Skipped' -FileName $ifc.Name
-                Write-FEDAUTOIfcExtractionFileResult -Index $processedFileIndex -Total $ifcFiles.Count -Status 'SkippedCurrent' -FileName $ifc.Name -Seconds 0
-                $skipped.Add([pscustomobject]@{
-                    IfcPath   = $ifc.FullName
-                    CsvPath   = $csvPath
-                    Reason    = $message
-                }) | Out-Null
-                continue
+                $previousRecord = $previousExtractionRecords[$ifcRelativePath.ToLowerInvariant()]
+                if (-not $previousRecord) { $previousRecord = $previousExtractionRecords[$ifc.Name.ToLowerInvariant()] }
+                $previousFilterHash = ''
+                if ($previousRecord -and $previousRecord.PSObject.Properties.Name -contains 'RuleFilterHash') {
+                    $previousFilterHash = if ($null -ne $previousRecord.RuleFilterHash) { $previousRecord.RuleFilterHash.ToString() } else { '' }
+                }
+                $filtersAreCurrent = ($previousFilterHash -eq $selection.RuleFilterHash)
+                if (-not $filtersAreCurrent -and [string]::IsNullOrWhiteSpace($previousFilterHash) -and -not $selection.ColumnFiltersActive) {
+                    $filtersAreCurrent = $true
+                }
+                if ($filtersAreCurrent) {
+                    $message = ("Skipping IFC data extraction for '{0}' because existing CSV is current." -f $ifc.Name)
+                    Write-Host $message -ForegroundColor Yellow
+                    Write-FEDAUTOIfcExtractionProgress -Current $processedFileIndex -Total $selectedIfcFiles.Count -Status 'Skipped' -FileName $ifc.Name
+                    Write-FEDAUTOIfcExtractionFileResult -Index $processedFileIndex -Total $selectedIfcFiles.Count -Status 'SkippedCurrent' -FileName $ifc.Name -Seconds 0
+                    $skipped.Add([pscustomobject]@{
+                        IfcPath   = $ifc.FullName
+                        IfcRelativePath = $ifcRelativePath
+                        CsvPath   = $csvPath
+                        CsvRelativePath = (ConvertTo-FEDAUTOIfcRelativePath -Path $csvPath -RootFolder $exportFolder)
+                        RuleIndex = $selection.RuleIndex
+                        RuleFilterHash = $selection.RuleFilterHash
+                        Reason    = $message
+                    }) | Out-Null
+                    continue
+                }
+                Write-Host ("Existing CSV for '{0}' is current by timestamp, but the selected data extraction filters changed; extracting again." -f $ifc.Name) -ForegroundColor Yellow
             }
         }
         try {
-            Write-FEDAUTOIfcExtractionProgress -Current ($processedFileIndex - 1) -Total $ifcFiles.Count -Status 'Starting' -FileName $ifc.Name
+            Write-FEDAUTOIfcExtractionProgress -Current ($processedFileIndex - 1) -Total $selectedIfcFiles.Count -Status 'Starting' -FileName $ifc.Name
             Write-Host ("Extracting IFC data: {0}" -f $ifc.Name)
             $fileTimer = [System.Diagnostics.Stopwatch]::StartNew()
-            $result = Export-IfcObjectAttributesCsvPython -IfcPath $ifc.FullName -CsvPath $csvPath -PythonPath $pythonPath
+            $result = Export-IfcObjectAttributesCsvPython -IfcPath $ifc.FullName -CsvPath $csvPath -PythonPath $pythonPath -TabInclusions $selection.TabInclusions -TabExclusions $selection.TabExclusions -AttributeInclusions $selection.AttributeInclusions -AttributeExclusions $selection.AttributeExclusions
             $fileTimer.Stop()
             $result | Add-Member -NotePropertyName Seconds -NotePropertyValue ([Math]::Round($fileTimer.Elapsed.TotalSeconds, 2)) -Force
+            $result | Add-Member -NotePropertyName IfcRelativePath -NotePropertyValue $ifcRelativePath -Force
+            $result | Add-Member -NotePropertyName CsvRelativePath -NotePropertyValue (ConvertTo-FEDAUTOIfcRelativePath -Path $csvPath -RootFolder $exportFolder) -Force
+            $result | Add-Member -NotePropertyName RuleIndex -NotePropertyValue $selection.RuleIndex -Force
+            $result | Add-Member -NotePropertyName RuleFilterHash -NotePropertyValue $selection.RuleFilterHash -Force
+            $result | Add-Member -NotePropertyName TabInclusions -NotePropertyValue $selection.TabInclusions -Force
+            $result | Add-Member -NotePropertyName TabExclusions -NotePropertyValue $selection.TabExclusions -Force
+            $result | Add-Member -NotePropertyName AttributeInclusions -NotePropertyValue $selection.AttributeInclusions -Force
+            $result | Add-Member -NotePropertyName AttributeExclusions -NotePropertyValue $selection.AttributeExclusions -Force
             $exports.Add($result) | Out-Null
-            Write-FEDAUTOIfcExtractionProgress -Current $processedFileIndex -Total $ifcFiles.Count -Status 'Exported' -FileName $ifc.Name
-            Write-FEDAUTOIfcExtractionFileResult -Index $processedFileIndex -Total $ifcFiles.Count -Status 'Exported' -FileName $ifc.Name -Seconds $fileTimer.Elapsed.TotalSeconds -ObjectCount $result.ObjectCount -AttributeCount $result.AttributeCount
+            Write-FEDAUTOIfcExtractionProgress -Current $processedFileIndex -Total $selectedIfcFiles.Count -Status 'Exported' -FileName $ifc.Name
+            Write-FEDAUTOIfcExtractionFileResult -Index $processedFileIndex -Total $selectedIfcFiles.Count -Status 'Exported' -FileName $ifc.Name -Seconds $fileTimer.Elapsed.TotalSeconds -ObjectCount $result.ObjectCount -AttributeCount $result.AttributeCount
             Write-Host ("  Exported {0} object row(s), {1} attribute column(s) in {2}s: {3}" -f $result.ObjectCount, $result.AttributeCount, ([Math]::Round($fileTimer.Elapsed.TotalSeconds, 2)), $csvPath)
         }
         catch {
-            $failures.Add([pscustomobject]@{ IfcPath=$ifc.FullName; Error=$_.ToString() }) | Out-Null
-            Write-FEDAUTOIfcExtractionProgress -Current $processedFileIndex -Total $ifcFiles.Count -Status 'Failed' -FileName $ifc.Name
+            $failures.Add([pscustomobject]@{ IfcPath=$ifc.FullName; IfcRelativePath=$ifcRelativePath; RuleIndex=$selection.RuleIndex; RuleFilterHash=$selection.RuleFilterHash; Error=$_.ToString() }) | Out-Null
+            Write-FEDAUTOIfcExtractionProgress -Current $processedFileIndex -Total $selectedIfcFiles.Count -Status 'Failed' -FileName $ifc.Name
             Write-Warning ("Failed to extract IFC data from '{0}': {1}" -f $ifc.Name, $_)
         }
     }
@@ -462,12 +783,15 @@ function Invoke-IfcDataExtraction {
     $durationSeconds = [Math]::Round($extractionTimer.Elapsed.TotalSeconds, 2)
     $summary = [ordered]@{
         SourceFolder  = $sourceFolder
+        SourceFolderRelativePath = (ConvertTo-FEDAUTOIfcRelativePath -Path $sourceFolder -RootFolder $basePath)
         ExportFolder  = $exportFolder
+        ExportFolderRelativePath = (ConvertTo-FEDAUTOIfcRelativePath -Path $exportFolder -RootFolder $basePath)
         Engine        = $engineDisplay
         MaxFileSizeMB = $maxFileSizeDisplayMb
         SkipIfCsvIsCurrent = $skipIfCsvIsCurrent
         ForceExtraction = $forceExtraction
         RuleSkippedInputCount = $ruleSkippedCount
+        RuleConflictCount = $ruleConflictCount
         DurationSeconds = $durationSeconds
         Exported      = $exports.Count
         Skipped       = $skipped.Count
@@ -477,7 +801,6 @@ function Invoke-IfcDataExtraction {
         SkippedFiles  = @($skipped.ToArray())
         FailedFiles   = @($failures.ToArray())
     }
-    $summaryPath = Join-Path $exportFolder 'ifc-data-extraction-summary.json'
     $summary | ConvertTo-Json -Depth 8 | Set-Content -Path $summaryPath -Encoding UTF8
     Write-Host ("IFC data extraction exported {0} file(s), skipped {1}, failed {2}. Duration: {3}s." -f $exports.Count, $skipped.Count, $failures.Count, $durationSeconds)
     Write-Host "=== END IFC Data Extraction ==="

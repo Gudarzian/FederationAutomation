@@ -146,6 +146,64 @@ Sets a property value on dictionaries or PSCustomObjects.
     }
 }
 
+function Resolve-FEDAUTOStateFilePath {
+<#
+Resolves a state-file path from portable metadata first, then legacy absolute
+metadata. This prevents shared OneDrive/SharePoint/ACC runs from reprocessing
+only because a previous user's C:\Users\...\ path is stored in JSON.
+#>
+    param(
+        [string]$StoredPath,
+        [string]$RootFolder,
+        [string]$RelativePath
+    )
+
+    $candidates = New-Object System.Collections.Generic.List[string]
+    if (-not [string]::IsNullOrWhiteSpace($RelativePath) -and -not [string]::IsNullOrWhiteSpace($RootFolder)) {
+        [void]$candidates.Add((Join-Path $RootFolder $RelativePath))
+    }
+    if (-not [string]::IsNullOrWhiteSpace($StoredPath)) {
+        $cleanPath = if (Get-Command CureFolderPath -ErrorAction SilentlyContinue) { CureFolderPath $StoredPath } else { $StoredPath }
+        if ([System.IO.Path]::IsPathRooted($cleanPath)) {
+            [void]$candidates.Add($cleanPath)
+            if (-not [string]::IsNullOrWhiteSpace($RootFolder)) {
+                [void]$candidates.Add((Join-Path $RootFolder ([System.IO.Path]::GetFileName($cleanPath))))
+            }
+        }
+        elseif (-not [string]::IsNullOrWhiteSpace($RootFolder)) {
+            [void]$candidates.Add((Join-Path $RootFolder $cleanPath))
+        }
+    }
+
+    $seen = @{}
+    foreach ($candidate in $candidates) {
+        if ([string]::IsNullOrWhiteSpace($candidate)) { continue }
+        $key = $candidate.ToLowerInvariant()
+        if ($seen.ContainsKey($key)) { continue }
+        $seen[$key] = $true
+        if (Test-Path -LiteralPath $candidate -PathType Leaf) { return $candidate }
+    }
+    return $(if ($candidates.Count -gt 0) { $candidates[0] } else { $null })
+}
+
+function ConvertTo-FEDAUTORelativePath {
+    param(
+        [string]$Path,
+        [string]$RootFolder
+    )
+    if ([string]::IsNullOrWhiteSpace($Path) -or [string]::IsNullOrWhiteSpace($RootFolder)) { return $Path }
+    try {
+        $fullPath = [System.IO.Path]::GetFullPath($Path)
+        $fullRoot = [System.IO.Path]::GetFullPath($RootFolder).TrimEnd('\')
+        if ($fullPath.Equals($fullRoot, [System.StringComparison]::OrdinalIgnoreCase)) { return '' }
+        if ($fullPath.StartsWith($fullRoot + '\', [System.StringComparison]::OrdinalIgnoreCase)) {
+            return $fullPath.Substring($fullRoot.Length + 1)
+        }
+    }
+    catch { }
+    return $Path
+}
+
 function Get-StringHash {
 <#
 Computes a SHA256 hash for a string.
@@ -1126,6 +1184,7 @@ Processes IFC files and injects attributes based on configuration.
         Write-IfcProcessProgress -Status 'Processing' -Current $processActionCurrent -Total $processActionTotal -FileName $ifc.Name
         $relativePath = $ifc.FullName.Substring($localFolder.TrimEnd('\').Length + 1)
         $sourceTimestamp = $ifc.LastWriteTimeUtc.ToString("o")
+        $destinationPath = Join-Path $ProcessedFolder $relativePath
         $fileNameMatchesPattern = Test-FederationFileNameMatch -FileName $ifc.Name -PartDefinitions $federationMatchDefinitions
         $nameParts = @(Split-ModelFileNameParts -FileName $ifc.Name)
 
@@ -1274,11 +1333,11 @@ Processes IFC files and injects attributes based on configuration.
             }
             if ($backfilled) { $metadata[$relativePath] = $existing }
 
-            $processedPath = $existing.ProcessedPath
-            $processedMissing = $false
-            if ([string]::IsNullOrWhiteSpace($processedPath) -or -not (Test-Path $processedPath -PathType Leaf)) {
-                $processedMissing = $true
-            }
+            $processedPath = Resolve-FEDAUTOStateFilePath `
+                -StoredPath (Get-PropertyValue -Object $existing -Name 'ProcessedPath') `
+                -RootFolder $ProcessedFolder `
+                -RelativePath $(if (Get-PropertyValue -Object $existing -Name 'ProcessedRelativePath') { Get-PropertyValue -Object $existing -Name 'ProcessedRelativePath' } else { $relativePath })
+            $processedMissing = [string]::IsNullOrWhiteSpace($processedPath) -or -not (Test-Path -LiteralPath $processedPath -PathType Leaf)
             if ($existing.ReportedFileSize -eq $reportedFileSize -and
                 $existing.ReportedFileUpdate -eq $reportedFileUpdate -and
                 $existing.AttributeHash -eq $payloadHash -and
@@ -1297,7 +1356,6 @@ Processes IFC files and injects attributes based on configuration.
         }
 
         # Ensure destination path mirrors source structure
-        $destinationPath = Join-Path $ProcessedFolder $relativePath
         $destinationDir = Split-Path -Parent $destinationPath
         if (-not (Test-Path $destinationDir)) {
             New-Item -ItemType Directory -Path $destinationDir -Force | Out-Null
@@ -1355,7 +1413,9 @@ Processes IFC files and injects attributes based on configuration.
             $processed += $destinationPath
             $metadata[$relativePath] = [ordered]@{
                 SourcePath         = $ifc.FullName
+                SourceRelativePath = $relativePath
                 ProcessedPath      = $destinationPath
+                ProcessedRelativePath = $relativePath
                 SourceTimestamp    = $sourceTimestamp
                 ReportedFileSize   = $reportedFileSize
                 ReportedFileUpdate = $reportedFileUpdate
@@ -1363,6 +1423,7 @@ Processes IFC files and injects attributes based on configuration.
                 FederationPatternMatched = $fileNameMatchesPattern
                 ProcessedTimestamp = (Get-Date).ToUniversalTime().ToString("o")
                 AttributesFile     = $AttributesWorkbookPath
+                AttributesFileName = [System.IO.Path]::GetFileName($AttributesWorkbookPath)
                 AttributesModified = $AttributesWorkbookTimestamp
             }
         }
@@ -1382,8 +1443,11 @@ Processes IFC files and injects attributes based on configuration.
         $existing = $metadata[$relativePath]
         $shouldCopy = $true
         if (-not $Force -and $existing) {
-            $processedPath = Get-PropertyValue -Object $existing -Name 'ProcessedPath'
-            $processedMissing = [string]::IsNullOrWhiteSpace($processedPath) -or -not (Test-Path $processedPath -PathType Leaf)
+            $processedPath = Resolve-FEDAUTOStateFilePath `
+                -StoredPath (Get-PropertyValue -Object $existing -Name 'ProcessedPath') `
+                -RootFolder $ProcessedFolder `
+                -RelativePath $(if (Get-PropertyValue -Object $existing -Name 'ProcessedRelativePath') { Get-PropertyValue -Object $existing -Name 'ProcessedRelativePath' } else { $relativePath })
+            $processedMissing = [string]::IsNullOrWhiteSpace($processedPath) -or -not (Test-Path -LiteralPath $processedPath -PathType Leaf)
             $existingSourceSize = Get-PropertyValue -Object $existing -Name 'SourceSize'
             if ($null -eq $existingSourceSize) {
                 $existingSourceSize = Get-PropertyValue -Object $existing -Name 'ReportedFileSize'
@@ -1443,7 +1507,9 @@ Processes IFC files and injects attributes based on configuration.
             $processed += $destinationPath
             $metadata[$relativePath] = [ordered]@{
                 SourcePath         = $file.FullName
+                SourceRelativePath = $relativePath
                 ProcessedPath      = $destinationPath
+                ProcessedRelativePath = $relativePath
                 SourceTimestamp    = $sourceTimestamp
                 SourceSize         = $sourceSize
                 ReportedFileSize   = $sourceSize
@@ -1452,6 +1518,7 @@ Processes IFC files and injects attributes based on configuration.
                 Passthrough        = $true
                 ProcessedTimestamp = (Get-Date).ToUniversalTime().ToString("o")
                 AttributesFile     = $AttributesWorkbookPath
+                AttributesFileName = [System.IO.Path]::GetFileName($AttributesWorkbookPath)
                 AttributesModified = $AttributesWorkbookTimestamp
             }
         }
@@ -1467,8 +1534,11 @@ Processes IFC files and injects attributes based on configuration.
         Failed     = $failures.Count
         Timestamp  = (Get-Date).ToUniversalTime().ToString("o")
         Files      = $processed
+        RelativeFiles = @($processed | ForEach-Object { ConvertTo-FEDAUTORelativePath -Path $_ -RootFolder $ProcessedFolder })
         SkippedFiles = $skipped
+        RelativeSkippedFiles = @($skipped | ForEach-Object { ConvertTo-FEDAUTORelativePath -Path $_ -RootFolder $localFolder })
         FailedFiles = $failures
+        RelativeFailedFiles = @($failures | ForEach-Object { ConvertTo-FEDAUTORelativePath -Path $_ -RootFolder $localFolder })
     }
     $summaryJson = $summary | ConvertTo-Json -Depth 10
     $summaryPath = Join-Path $ProcessedFolder "processed-summary.json"

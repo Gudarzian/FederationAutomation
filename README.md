@@ -4,7 +4,7 @@ Federation Automation prepares BIM model delivery sets by staging source files, 
 
 ## Manual
 
-See `Docs/UserManual.md` for the workflow, section descriptions, and selective run options.
+See `Docs/UserManual.md` for the concise workflow guide and `Docs/Federation-Automation-User-Manual-Friendly.md` for the full user manual.
 
 Project page:
 https://github.com/Gudarzian/FederationAutomation
@@ -12,7 +12,7 @@ https://github.com/Gudarzian/FederationAutomation
 ## Folder Layout
 
 - `Source` contains the PowerShell source scripts and EXE build scripts.
-- `Docs` contains the user manual.
+- `Docs` contains the concise guide, full user manual, and JSON/CSV build notes.
 - `Templates` contains sanitized generic JSON configuration templates.
 - `Exe_Files` contains the runnable package.
 

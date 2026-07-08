@@ -419,9 +419,9 @@ function Remove-NavisworksTemporaryOptionsPath {
 function Copy-WildcardOutputsToDestination {
     [CmdletBinding()]
     param(
-        [Parameter(Mandatory = $true)][array]$CopyRequests,
+        [Parameter(Mandatory = $true)][AllowEmptyCollection()][array]$CopyRequests,
         [Parameter(Mandatory = $true)][string]$DestinationFolder,
-        [Parameter(Mandatory = $true)][array]$Settings,
+        [Parameter(Mandatory = $true)][AllowEmptyCollection()][array]$Settings,
         [string]$LogsFolder,
         [string]$BasePath
     )
@@ -463,6 +463,94 @@ function Copy-WildcardOutputsToDestination {
         }
     }
     return @($copyResults)
+}
+
+function ConvertTo-FEDAUTORelativePath {
+    param(
+        [string]$Path,
+        [string]$RootFolder
+    )
+    if ([string]::IsNullOrWhiteSpace($Path) -or [string]::IsNullOrWhiteSpace($RootFolder)) { return $Path }
+    try {
+        $fullPath = [System.IO.Path]::GetFullPath($Path)
+        $fullRoot = [System.IO.Path]::GetFullPath($RootFolder).TrimEnd('\')
+        if ($fullPath.Equals($fullRoot, [System.StringComparison]::OrdinalIgnoreCase)) { return '' }
+        if ($fullPath.StartsWith($fullRoot + '\', [System.StringComparison]::OrdinalIgnoreCase)) {
+            return $fullPath.Substring($fullRoot.Length + 1)
+        }
+    }
+    catch { }
+    return $Path
+}
+
+function Write-FEDAUTOJsonFile {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]$InputObject,
+        [Parameter(Mandatory = $true)][string]$Path,
+        [int]$Depth = 10,
+        [array]$Settings = @(),
+        [string]$LogsFolder,
+        [string]$BasePath,
+        [string]$Context = 'Pipeline step'
+    )
+
+    $folder = Split-Path -Parent $Path
+    if ([string]::IsNullOrWhiteSpace($folder)) {
+        $folder = (Get-Location).ProviderPath
+        $Path = Join-Path $folder $Path
+    }
+    [System.IO.Directory]::CreateDirectory($folder) | Out-Null
+    $folder = [System.IO.Path]::GetFullPath($folder)
+    $Path = [System.IO.Path]::GetFullPath($Path)
+
+    $json = $InputObject | ConvertTo-Json -Depth $Depth
+    $lastError = $null
+    for ($attempt = 1; $attempt -le 3; $attempt++) {
+        $tempPath = Join-Path $folder ('.{0}.{1}.tmp' -f ([System.IO.Path]::GetFileName($Path)), ([guid]::NewGuid().ToString('N')))
+        $backupPath = Join-Path $folder ('.{0}.{1}.bak' -f ([System.IO.Path]::GetFileName($Path)), ([guid]::NewGuid().ToString('N')))
+        try {
+            $encoding = New-Object System.Text.UTF8Encoding -ArgumentList $false
+            [System.IO.File]::WriteAllText($tempPath, $json, $encoding)
+            if ([System.IO.File]::Exists($Path)) {
+                [System.IO.File]::Replace($tempPath, $Path, $backupPath)
+                try {
+                    if ([System.IO.File]::Exists($backupPath)) { [System.IO.File]::Delete($backupPath) }
+                }
+                catch { }
+            }
+            else {
+                [System.IO.File]::Move($tempPath, $Path)
+            }
+            return
+        }
+        catch {
+            $lastError = $_
+            try {
+                if ([System.IO.File]::Exists($tempPath)) { [System.IO.File]::Delete($tempPath) }
+            }
+            catch { }
+            if ($attempt -lt 3) { Start-Sleep -Milliseconds (300 * $attempt) }
+        }
+    }
+
+    $errorText = if ($lastError -and $lastError.Exception -and -not [string]::IsNullOrWhiteSpace($lastError.Exception.Message)) {
+        $lastError.Exception.Message
+    }
+    elseif ($lastError) {
+        $lastError.ToString()
+    }
+    else {
+        'Unknown write error.'
+    }
+    $message = "$Context completed, but summary JSON could not be written to '$Path'. The shared folder or existing JSON file may be locked or unavailable. $errorText"
+    if (Get-Command Write-Log -ErrorAction SilentlyContinue) {
+        Write-Log -Message $message -Color 'Red' -Settings $Settings -LogsFolderOverride $LogsFolder -BasePath $BasePath
+    }
+    else {
+        Write-Warning $message
+    }
+    throw $message
 }
 
 if (-not (Get-Variable -Name PWAttributeDefinitions -Scope Script -ErrorAction SilentlyContinue)) {
@@ -712,8 +800,18 @@ Groups IFCs and federates them into Navisworks outputs.
     $TranscriptStarted = $false
     $TemporaryNavisworksOptionsPath = $null
     trap {
+        $trapError = $_
         Remove-NavisworksTemporaryOptionsPath -Path $TemporaryNavisworksOptionsPath
-        throw
+        $trapMessage = if ($trapError.Exception -and -not [string]::IsNullOrWhiteSpace($trapError.Exception.Message)) {
+            $trapError.Exception.Message
+        }
+        else {
+            $trapError.ToString()
+        }
+        if ([string]::IsNullOrWhiteSpace($trapMessage) -or $trapMessage -eq 'ScriptHalted') {
+            $trapMessage = $trapError.ToString()
+        }
+        throw $trapMessage
     }
     if (-not $global:MainTranscriptActive) {
         try {
@@ -1025,7 +1123,7 @@ Groups IFCs and federates them into Navisworks outputs.
             if ($matches.Count -eq 0) {
                 $warning = "Wildcard rule $($ruleIndex + 1) '$outputName' matched no files in '$sourcePath'; skipped."
                 Write-Warning $warning; Write-Log -Message $warning -Color 'Yellow' -Settings $ConfigSettings -LogsFolderOverride $LogsFolder -BasePath $basePath
-                $ruleSummary += [pscustomobject]@{ Rule=$ruleIndex + 1; ExportFileName="$outputName$ruleOutputExtension"; OutputFormat=$ruleOutputFormat; SourceFolder=$sourcePath; MatchedFiles=@(); CopyToDestination=$copyToDestination; Status='Skipped - no matches' }
+                $ruleSummary += [pscustomobject]@{ Rule=$ruleIndex + 1; ExportFileName="$outputName$ruleOutputExtension"; OutputFormat=$ruleOutputFormat; SourceFolder=$sourcePath; SourceFolderRelativePath=(ConvertTo-FEDAUTORelativePath -Path $sourcePath -RootFolder $basePath); MatchedFiles=@(); MatchedRelativeFiles=@(); CopyToDestination=$copyToDestination; Status='Skipped - no matches' }
                 Complete-FederationNwdProgress -Status 'Skipped' -Name $outputName
                 continue
             }
@@ -1035,11 +1133,29 @@ Groups IFCs and federates them into Navisworks outputs.
             if ($copyToDestination) {
                 $destinationCopyRequests += [pscustomobject]@{ Rule=$ruleIndex + 1; SourcePath=$result.Model }
             }
-            $ruleSummary += [pscustomobject]@{ Rule=$ruleIndex + 1; ExportFileName="$outputName$ruleOutputExtension"; OutputFormat=$ruleOutputFormat; SourceFolder=$sourcePath; MatchedFiles=$matches; CopyToDestination=$copyToDestination; Status='Created' }
+            $ruleSummary += [pscustomobject]@{ Rule=$ruleIndex + 1; ExportFileName="$outputName$ruleOutputExtension"; OutputFormat=$ruleOutputFormat; SourceFolder=$sourcePath; SourceFolderRelativePath=(ConvertTo-FEDAUTORelativePath -Path $sourcePath -RootFolder $basePath); MatchedFiles=$matches; MatchedRelativeFiles=@($matches | ForEach-Object { ConvertTo-FEDAUTORelativePath -Path $_ -RootFolder $sourcePath }); CopyToDestination=$copyToDestination; Status='Created' }
         }
         if (-not $lastCreatedModelPath) { throw "Wildcard Selection created no Navisworks outputs." }
-        $destinationCopies = @(Copy-WildcardOutputsToDestination -CopyRequests $destinationCopyRequests -DestinationFolder $DestinationFolder -Settings $ConfigSettings -LogsFolder $LogsFolder -BasePath $basePath)
-        [ordered]@{ Timestamp=(Get-Date).ToUniversalTime().ToString('o'); GroupingMethod='Wildcard Selection'; InputFolderPath=$InputFolderPath; OutputFolderPath=$OutputPath; DestinationFolder=$DestinationFolder; DestinationCopies=$destinationCopies; WildcardRules=$ruleSummary; LastCreatedModelPath=$lastCreatedModelPath } | ConvertTo-Json -Depth 10 | Set-Content -Path (Join-Path $OutputPath 'federation-summary.json') -Encoding UTF8
+        $destinationCopies = @()
+        if ($destinationCopyRequests.Count -gt 0) {
+            $destinationCopies = @(Copy-WildcardOutputsToDestination -CopyRequests $destinationCopyRequests -DestinationFolder $DestinationFolder -Settings $ConfigSettings -LogsFolder $LogsFolder -BasePath $basePath)
+        }
+        $summaryPath = Join-Path $OutputPath 'federation-summary.json'
+        $summary = [ordered]@{
+            Timestamp=(Get-Date).ToUniversalTime().ToString('o')
+            GroupingMethod='Wildcard Selection'
+            InputFolderPath=$InputFolderPath
+            InputFolderRelativePath=(ConvertTo-FEDAUTORelativePath -Path $InputFolderPath -RootFolder $basePath)
+            OutputFolderPath=$OutputPath
+            OutputFolderRelativePath=(ConvertTo-FEDAUTORelativePath -Path $OutputPath -RootFolder $basePath)
+            DestinationFolder=$DestinationFolder
+            DestinationFolderRelativePath=(ConvertTo-FEDAUTORelativePath -Path $DestinationFolder -RootFolder $basePath)
+            DestinationCopies=$destinationCopies
+            WildcardRules=$ruleSummary
+            LastCreatedModelPath=$lastCreatedModelPath
+            LastCreatedModelRelativePath=(ConvertTo-FEDAUTORelativePath -Path $lastCreatedModelPath -RootFolder $OutputPath)
+        }
+        Write-FEDAUTOJsonFile -InputObject $summary -Path $summaryPath -Depth 10 -Settings $ConfigSettings -LogsFolder $LogsFolder -BasePath $basePath -Context 'Wildcard Selection federation'
         Remove-NavisworksTemporaryOptionsPath -Path $TemporaryNavisworksOptionsPath
         if ($TranscriptStarted) { Stop-Transcript | Out-Null; $global:MainTranscriptActive = $false }
         return
@@ -1237,19 +1353,23 @@ Groups IFCs and federates them into Navisworks outputs.
     $summary = [ordered]@{
         Timestamp                              = (Get-Date).ToUniversalTime().ToString("o")
         InputFolderPath                        = $InputFolderPath
+        InputFolderRelativePath                = (ConvertTo-FEDAUTORelativePath -Path $InputFolderPath -RootFolder $basePath)
         OutputFolderPath                       = $OutputPath
+        OutputFolderRelativePath               = (ConvertTo-FEDAUTORelativePath -Path $OutputPath -RootFolder $basePath)
         FinalOutputFormat                      = $finalOutputFormat
         MatchedInputCount                      = $rows.Count
         MatchedInputFiles                      = @($rows | Select-Object -ExpandProperty FileName)
         UnmatchedInputCount                    = $unmatchedFiles.Count
         UnmatchedInputFiles                    = @($unmatchedFiles)
         UnmatchedModelPath                     = $unmatchedModelPath
+        UnmatchedModelRelativePath             = (ConvertTo-FEDAUTORelativePath -Path $unmatchedModelPath -RootFolder $OutputPath)
         IncludeUnmatchedFilesInFederatedModel  = $includeUnmatchedFilesInFederatedModel
         FinalModelPath                         = $finalModelPath
+        FinalModelRelativePath                 = (ConvertTo-FEDAUTORelativePath -Path $finalModelPath -RootFolder $OutputPath)
         FinalModelCreated                      = -not [string]::IsNullOrWhiteSpace($finalModelPath)
     }
     $summaryPath = Join-Path $OutputPath 'federation-summary.json'
-    $summary | ConvertTo-Json -Depth 10 | Set-Content -Path $summaryPath -Encoding UTF8
+    Write-FEDAUTOJsonFile -InputObject $summary -Path $summaryPath -Depth 10 -Settings $ConfigSettings -LogsFolder $LogsFolder -BasePath $basePath -Context 'Federation'
     $ProcessEndTime = Get-Date
     $TotalDuration = New-TimeSpan -Start $ProcessStartTime -End $ProcessEndTime
     Write-Host "Process finish time: $ProcessEndTime"

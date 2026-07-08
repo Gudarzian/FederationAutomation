@@ -17,15 +17,58 @@ function Enable-FEDAUTOProcessModuleLoading {
 
 Enable-FEDAUTOProcessModuleLoading
 
-# Resolve the folder that this script (or its host assembly) lives in.
-$basePath = if ($PSCommandPath) { Split-Path -Parent $PSCommandPath }
-elseif ($null -ne $MyInvocation.MyCommand.Path -and $MyInvocation.MyCommand.Path -ne '') {
-    Split-Path -Parent $MyInvocation.MyCommand.Path
+# Resolve the folder that this script, or the compiled executable, lives in.
+function Get-FEDAUTOApplicationBasePath {
+    $hostProcessNames = @('powershell', 'pwsh', 'powershell_ise')
+    $candidatePaths = New-Object System.Collections.Generic.List[string]
+    try {
+        $assembly = [System.Reflection.Assembly]::GetEntryAssembly()
+        if ($assembly -and -not [string]::IsNullOrWhiteSpace($assembly.Location)) { [void]$candidatePaths.Add($assembly.Location) }
+    }
+    catch { }
+    try {
+        $processPath = [System.Diagnostics.Process]::GetCurrentProcess().MainModule.FileName
+        if (-not [string]::IsNullOrWhiteSpace($processPath)) { [void]$candidatePaths.Add($processPath) }
+    }
+    catch { }
+
+    foreach ($candidatePath in $candidatePaths) {
+        try {
+            if ([System.IO.Path]::GetExtension($candidatePath) -ieq '.exe') {
+                $processName = [System.IO.Path]::GetFileNameWithoutExtension($candidatePath)
+                if ($hostProcessNames -notcontains $processName) { return (Split-Path -Parent $candidatePath) }
+            }
+        }
+        catch { }
+    }
+
+    if ($PSCommandPath) { return (Split-Path -Parent $PSCommandPath) }
+    if ($null -ne $MyInvocation.MyCommand.Path -and $MyInvocation.MyCommand.Path -ne '') { return (Split-Path -Parent $MyInvocation.MyCommand.Path) }
+    return (Get-Location).ProviderPath
 }
-else {
-    Add-Type -AssemblyName System.Reflection
-    Split-Path -Parent ([System.Reflection.Assembly]::GetEntryAssembly().Location)
+$basePath = Get-FEDAUTOApplicationBasePath
+
+function Get-FEDAUTOExecutableBuildInfo {
+    param([string]$DefaultName = 'FA_Main')
+
+    $nameVariable = Get-Variable -Name FEDAUTOExecutableName -Scope Script -ErrorAction SilentlyContinue
+    $versionVariable = Get-Variable -Name FEDAUTOExecutableBuildVersion -Scope Script -ErrorAction SilentlyContinue
+    $timeVariable = Get-Variable -Name FEDAUTOExecutableBuildTime -Scope Script -ErrorAction SilentlyContinue
+    $name = if ($nameVariable -and -not [string]::IsNullOrWhiteSpace($nameVariable.Value)) { $nameVariable.Value } else { $DefaultName }
+    $version = if ($versionVariable -and -not [string]::IsNullOrWhiteSpace($versionVariable.Value)) { $versionVariable.Value } else { 'source' }
+    $builtAt = if ($timeVariable -and -not [string]::IsNullOrWhiteSpace($timeVariable.Value)) { $timeVariable.Value } else { '' }
+    return [pscustomobject]@{ Name = $name; Version = $version; BuiltAt = $builtAt }
 }
+
+function Format-FEDAUTOExecutableBuildInfo {
+    param($BuildInfo)
+    if ($BuildInfo -and -not [string]::IsNullOrWhiteSpace($BuildInfo.BuiltAt)) {
+        return ("{0} build {1} ({2})" -f $BuildInfo.Name, $BuildInfo.Version, $BuildInfo.BuiltAt)
+    }
+    return ("{0} build {1}" -f $BuildInfo.Name, $BuildInfo.Version)
+}
+
+$script:FEDAUTOCurrentBuildInfo = Get-FEDAUTOExecutableBuildInfo -DefaultName 'FA_Main'
 
 # Ensure relative paths resolve from the script/EXE folder.
 $locationPushed = $false
@@ -60,7 +103,7 @@ if (-not (Test-Path $ConfigFile -PathType Leaf)) {
     throw "Config file not found: $ConfigFile"
 }
 
-# Load the shared functions module; if missing, fall back to embedded resources.
+# Load split support files; packaged EXE runs load embedded resources when disk files are unavailable.
 # If local script files exist, always reload them for PS1 runs so updates take effect.
 $functionFiles = @(
     "012-SharedFunctions.Ps1",
@@ -84,57 +127,37 @@ if ($needsFunctions -or $forceReload) {
         }
     }
     else {
-        $legacyPath = Join-Path $basePath "011-FunctionsDepository.Ps1"
-        if (Test-Path $legacyPath) {
-            . $legacyPath
+        # Embedded EXE run: load functions directly from resources without extraction.
+        $asm = [System.Reflection.Assembly]::GetEntryAssembly()
+        if (-not $asm) {
+            throw ("Support files not found beside the script: {0}" -f ($functionFiles -join ', '))
         }
-        else {
-            # Embedded EXE run: load functions directly from the resource without extraction.
-            $asm = [System.Reflection.Assembly]::GetEntryAssembly()
-            if (-not $asm) {
-                throw "Support file not found: 012-SharedFunctions.Ps1 (or legacy 011-FunctionsDepository.Ps1)"
-            }
 
-            $resourceNames = $asm.GetManifestResourceNames()
-            function Import-EmbeddedScript {
-                param(
-                    $Assembly,
-                    [string]$ResourceName
-                )
-                $stream = $Assembly.GetManifestResourceStream($ResourceName)
-                try {
-                    $reader = New-Object System.IO.StreamReader($stream)
-                    $scriptText = $reader.ReadToEnd()
-                }
-                finally {
-                    if ($reader) { $reader.Dispose() }
-                    if ($stream) { $stream.Dispose() }
-                }
-                $scriptBlock = [ScriptBlock]::Create($scriptText)
-                . $scriptBlock
+        $resourceNames = $asm.GetManifestResourceNames()
+        function Import-EmbeddedScript {
+            param(
+                $Assembly,
+                [string]$ResourceName
+            )
+            $stream = $Assembly.GetManifestResourceStream($ResourceName)
+            try {
+                $reader = New-Object System.IO.StreamReader($stream)
+                $scriptText = $reader.ReadToEnd()
             }
+            finally {
+                if ($reader) { $reader.Dispose() }
+                if ($stream) { $stream.Dispose() }
+            }
+            $scriptBlock = [ScriptBlock]::Create($scriptText)
+            . $scriptBlock
+        }
 
-            $resourceFiles = @()
-            foreach ($file in $functionFiles) {
-                $resourceName = $resourceNames | Where-Object { $_ -like "*$file" } | Select-Object -First 1
-                if (-not $resourceName) { $resourceFiles = @(); break }
-                $resourceFiles += $resourceName
+        foreach ($file in $functionFiles) {
+            $resourceName = $resourceNames | Where-Object { $_ -like "*$file" } | Select-Object -First 1
+            if (-not $resourceName) {
+                throw "Embedded support file not found: $file"
             }
-
-            if ($resourceFiles.Count -eq $functionFiles.Count) {
-                foreach ($resourceName in $resourceFiles) {
-                    Import-EmbeddedScript -Assembly $asm -ResourceName $resourceName
-                }
-            }
-            else {
-                $legacyResource = $resourceNames | Where-Object { $_ -like "*011-FunctionsDepository.Ps1" } | Select-Object -First 1
-                if ($legacyResource) {
-                    Import-EmbeddedScript -Assembly $asm -ResourceName $legacyResource
-                }
-                else {
-                    throw "Support file not found: 012-SharedFunctions.Ps1 (or legacy 011-FunctionsDepository.Ps1)"
-                }
-            }
+            Import-EmbeddedScript -Assembly $asm -ResourceName $resourceName
         }
     }
 }
@@ -185,8 +208,7 @@ $resolvedConfig = $ConfigFile
 $settingsCache = @()
 $settingsMissing = $true
 
-# Load Settings and required configuration data once in main.  The adapter keeps
-# legacy Excel named ranges working while allowing the GUI to save JSON configs.
+# Load Settings and required configuration data once in main through the JSON adapter.
 if (-not (Get-Command Get-PipelineConfiguration -ErrorAction SilentlyContinue)) {
     throw 'Configuration adapter was not loaded.'
 }
@@ -247,12 +269,13 @@ catch {
     Write-Warning "Transcript could not be started. Logging will be console-only. Error: $_"
 }
 Write-Host "Logging to $($mainLogInfo.Path)"
+Write-Host ("Executable build version: {0}" -f (Format-FEDAUTOExecutableBuildInfo $script:FEDAUTOCurrentBuildInfo))
 
 # Log settings resolution (defaults vs Settings) for traceability.
 Write-Host ""
 Write-Host "=== Settings Resolution ===" -ForegroundColor Cyan
 if ($settingsMissing) {
-    Write-Host "Settings named range missing; defaults will be used where applicable." -ForegroundColor Yellow
+    Write-Host "Settings section missing; defaults will be used where applicable." -ForegroundColor Yellow
 }
 if (Test-Path $resolvedConfig) {
     Write-Host ("ConfigFile: {0}" -f $resolvedConfig)
@@ -552,6 +575,47 @@ function Resolve-FinalFederatedModelPath {
     return (Join-Path $outputFolder $federatedName)
 }
 
+function Resolve-FEDAUTOSummaryFilePath {
+    param(
+        [string]$StoredPath,
+        [string]$RelativePath,
+        [string]$RootFolder
+    )
+
+    $candidates = New-Object System.Collections.Generic.List[string]
+    if (-not [string]::IsNullOrWhiteSpace($RelativePath) -and -not [string]::IsNullOrWhiteSpace($RootFolder)) {
+        $relativeCandidate = if ([System.IO.Path]::IsPathRooted($RelativePath)) {
+            if (Get-Command CureFolderPath -ErrorAction SilentlyContinue) { CureFolderPath $RelativePath } else { $RelativePath }
+        }
+        else {
+            Join-Path $RootFolder $RelativePath
+        }
+        [void]$candidates.Add($relativeCandidate)
+    }
+    if (-not [string]::IsNullOrWhiteSpace($StoredPath)) {
+        $cleanPath = if (Get-Command CureFolderPath -ErrorAction SilentlyContinue) { CureFolderPath $StoredPath } else { $StoredPath }
+        if ([System.IO.Path]::IsPathRooted($cleanPath)) {
+            [void]$candidates.Add($cleanPath)
+            if (-not [string]::IsNullOrWhiteSpace($RootFolder)) {
+                [void]$candidates.Add((Join-Path $RootFolder ([System.IO.Path]::GetFileName($cleanPath))))
+            }
+        }
+        elseif (-not [string]::IsNullOrWhiteSpace($RootFolder)) {
+            [void]$candidates.Add((Join-Path $RootFolder $cleanPath))
+        }
+    }
+
+    $seen = @{}
+    foreach ($candidate in $candidates) {
+        if ([string]::IsNullOrWhiteSpace($candidate)) { continue }
+        $key = $candidate.ToLowerInvariant()
+        if ($seen.ContainsKey($key)) { continue }
+        $seen[$key] = $true
+        if (Test-Path -LiteralPath $candidate -PathType Leaf) { return $candidate }
+    }
+    return $(if ($candidates.Count -gt 0) { $candidates[0] } else { $null })
+}
+
 function Resolve-ProcessInputs {
     param(
         [array]$Settings,
@@ -578,7 +642,7 @@ function Resolve-ProcessInputs {
             $attributeRows = @(Get-ExcelDataSafe -Path $attributesPath -NamedRange 'Attributes')
         }
         catch {
-            Write-Warning "Unable to read named range 'Attributes' from '$attributesPath'. Processing will handle this as a stage error. Error: $_"
+            Write-Warning "Unable to read attributes CSV from '$attributesPath'. Processing will handle this as a stage error. Error: $_"
             $attributeRows = @()
         }
         try {
@@ -597,6 +661,141 @@ function Resolve-ProcessInputs {
     }
 }
 
+function New-FEDAUTOStageSummary {
+    param(
+        [string]$Name,
+        [bool]$Enabled,
+        [string]$Reason
+    )
+    [pscustomobject]@{
+        Name     = $Name
+        Enabled  = $Enabled
+        Status   = $(if ($Enabled) { 'Pending' } else { 'Off' })
+        Reason   = $Reason
+        Details  = New-Object System.Collections.Generic.List[string]
+    }
+}
+
+function Set-FEDAUTOStageSummary {
+    param(
+        [Parameter(Mandatory = $true)][string]$Name,
+        [string]$Status,
+        [string]$Reason,
+        [string[]]$Details
+    )
+    if (-not $script:FEDAUTOStageSummaries -or -not $script:FEDAUTOStageSummaries.Contains($Name)) { return }
+    $summary = $script:FEDAUTOStageSummaries[$Name]
+    if (-not [string]::IsNullOrWhiteSpace($Status)) { $summary.Status = $Status }
+    if (-not [string]::IsNullOrWhiteSpace($Reason)) { $summary.Reason = $Reason }
+    foreach ($detail in @($Details)) {
+        if (-not [string]::IsNullOrWhiteSpace($detail)) { $summary.Details.Add($detail) | Out-Null }
+    }
+}
+
+function Get-FEDAUTOStageSummaryPath {
+    param(
+        [Parameter(Mandatory = $true)][ValidateSet('IfcDataExtraction','Process','Federation')][string]$Stage
+    )
+    switch ($Stage) {
+        'IfcDataExtraction' {
+            $folder = Get-SettingValue -Settings $settingsCache -Names @('IfcDataExtractionFolder')
+            if (Get-Command CureFolderPath -ErrorAction SilentlyContinue) { $folder = CureFolderPath $folder }
+            if ([string]::IsNullOrWhiteSpace($folder)) { $folder = 'IFCDataExtraction' }
+            if (-not [System.IO.Path]::IsPathRooted($folder)) { $folder = Join-Path $basePath $folder }
+            return (Join-Path $folder 'ifc-data-extraction-summary.json')
+        }
+        'Process' {
+            $folder = Get-SettingValue -Settings $settingsCache -Names @('ProcessedFolder')
+            if (Get-Command CureFolderPath -ErrorAction SilentlyContinue) { $folder = CureFolderPath $folder }
+            if ([string]::IsNullOrWhiteSpace($folder)) { $folder = 'ProcessedIFC' }
+            if (-not [System.IO.Path]::IsPathRooted($folder)) { $folder = Join-Path $basePath $folder }
+            return (Join-Path $folder 'processed-summary.json')
+        }
+        'Federation' {
+            $folder = Get-SettingValue -Settings $settingsCache -Names @('FederationOutputFolder')
+            if (Get-Command CureFolderPath -ErrorAction SilentlyContinue) { $folder = CureFolderPath $folder }
+            if ([string]::IsNullOrWhiteSpace($folder)) { $folder = 'Output' }
+            if (-not [System.IO.Path]::IsPathRooted($folder)) { $folder = Join-Path $basePath $folder }
+            return (Join-Path $folder 'federation-summary.json')
+        }
+    }
+}
+
+function Get-FEDAUTOJsonSummary {
+    param([string]$Path)
+    if ([string]::IsNullOrWhiteSpace($Path) -or -not (Test-Path -LiteralPath $Path -PathType Leaf)) { return $null }
+    try { return (Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json -ErrorAction Stop) }
+    catch { return $null }
+}
+
+function Complete-FEDAUTOStageFromSummary {
+    param(
+        [Parameter(Mandatory = $true)][ValidateSet('IfcDataExtraction','Process','Federation')][string]$Stage
+    )
+    $summaryPath = Get-FEDAUTOStageSummaryPath -Stage $Stage
+    $summary = Get-FEDAUTOJsonSummary -Path $summaryPath
+    switch ($Stage) {
+        'IfcDataExtraction' {
+            if ($summary) {
+                Set-FEDAUTOStageSummary -Name $Stage -Status 'Successful' -Reason 'IFC data extraction completed.' -Details @(
+                    ("Exported: {0}; Skipped: {1}; Failed: {2}; Rule-skipped inputs: {3}" -f $summary.Exported, $summary.Skipped, $summary.Failed, $summary.RuleSkippedInputCount),
+                    ("Output folder: {0}" -f $summary.ExportFolderRelativePath)
+                )
+            }
+            else {
+                Set-FEDAUTOStageSummary -Name $Stage -Status 'Successful' -Reason 'IFC data extraction completed, but summary JSON was not found.'
+            }
+        }
+        'Process' {
+            if ($summary) {
+                Set-FEDAUTOStageSummary -Name $Stage -Status 'Successful' -Reason 'IFC processing completed.' -Details @(
+                    ("Processed: {0}; Skipped/current: {1}; Failed: {2}" -f $summary.Processed, $summary.Skipped, $summary.Failed),
+                    ("Summary file: {0}" -f $summaryPath)
+                )
+            }
+            else {
+                Set-FEDAUTOStageSummary -Name $Stage -Status 'Successful' -Reason 'IFC processing completed, but summary JSON was not found.'
+            }
+        }
+        'Federation' {
+            if ($summary) {
+                if ($summary.GroupingMethod -eq 'Wildcard Selection') {
+                    $rules = @($summary.WildcardRules)
+                    $createdRules = @($rules | Where-Object { $_.Status -eq 'Created' }).Count
+                    $skippedRules = @($rules | Where-Object { $_.Status -like 'Skipped*' }).Count
+                    $matchedFiles = 0
+                    foreach ($rule in $rules) {
+                        if ($rule -and ($rule.PSObject.Properties.Name -contains 'MatchedFiles')) {
+                            $matchedFiles += @($rule.MatchedFiles).Count
+                        }
+                    }
+                    Set-FEDAUTOStageSummary -Name $Stage -Status 'Successful' -Reason 'Wildcard federation completed.' -Details @(
+                        ("Rules created: {0}; Rules skipped/no matches: {1}; Matched input references: {2}" -f $createdRules, $skippedRules, $matchedFiles),
+                        ("Last created model: {0}" -f $summary.LastCreatedModelRelativePath),
+                        ("Output folder: {0}" -f $summary.OutputFolderRelativePath)
+                    )
+                    return
+                }
+                Set-FEDAUTOStageSummary -Name $Stage -Status 'Successful' -Reason 'Federation completed.' -Details @(
+                    ("Grouping: {0}; Matched inputs: {1}; Unmatched inputs: {2}; Final created: {3}" -f $summary.GroupingMethod, $summary.MatchedInputCount, $summary.UnmatchedInputCount, $summary.FinalModelCreated),
+                    ("Output folder: {0}" -f $summary.OutputFolderRelativePath)
+                )
+            }
+            else {
+                Set-FEDAUTOStageSummary -Name $Stage -Status 'Successful' -Reason 'Federation completed, but summary JSON was not found.'
+            }
+        }
+    }
+}
+
+$script:FEDAUTOStageSummaries = [ordered]@{
+    Download          = New-FEDAUTOStageSummary -Name 'Download' -Enabled $pipelineStagePlan.Download -Reason $(if ($pipelineStagePlan.Download) { 'Enabled by RunDownload.' } else { 'Off: RunDownload is disabled.' })
+    IfcDataExtraction = New-FEDAUTOStageSummary -Name 'IfcDataExtraction' -Enabled $pipelineStagePlan.IfcDataExtraction -Reason $(if ($pipelineStagePlan.IfcDataExtraction) { 'Enabled by RunIfcDataExtraction.' } else { 'Off: RunIfcDataExtraction is disabled.' })
+    Process           = New-FEDAUTOStageSummary -Name 'Process' -Enabled $pipelineStagePlan.Process -Reason $(if ($pipelineStagePlan.Process) { 'Enabled by RunProcess.' } else { 'Off: RunProcess is disabled.' })
+    Federation        = New-FEDAUTOStageSummary -Name 'Federation' -Enabled $pipelineStagePlan.Federation -Reason $(if ($pipelineStagePlan.Federation) { 'Enabled by RunFederation.' } else { 'Off: RunFederation is disabled.' })
+    Revizto           = New-FEDAUTOStageSummary -Name 'Revizto' -Enabled $pipelineStagePlan.Revizto -Reason $(if ($pipelineStagePlan.Revizto) { 'Enabled by ReviztoPublish.' } else { 'Off: ReviztoPublish is disabled.' })
+}
+
 try {
     # Determine federation behavior from Settings.
     $forceFederate = $runFederationForcedBySetting
@@ -610,6 +809,7 @@ try {
         $SkipFederate = $true
         $skipMessage = "Federation disabled by Settings parameter 'RunFederation'."
         Write-Log -Message $skipMessage -Color 'Yellow' -Settings $settingsCache -LogsFolderOverride $LogsFolder -BasePath $basePath
+        Set-FEDAUTOStageSummary -Name 'Federation' -Status 'Off' -Reason $skipMessage
     }
 
     if ($SkipDownload -or -not $runDownloadEnabled) {
@@ -618,6 +818,7 @@ try {
         Write-Log -Message ("Download skipped: {0}" -f $downloadSkipReason) -Color 'Yellow' -Settings $settingsCache -LogsFolderOverride $LogsFolder -BasePath $basePath
         $global:PWDownloadedCount = 0
         $global:PWDeletedCount = 0
+        Set-FEDAUTOStageSummary -Name 'Download' -Status 'Skipped' -Reason $downloadSkipReason -Details @('Existing source files were used.')
     }
     else {
         # Pull latest IFCs and metadata from ProjectWise/ACC based on config.
@@ -641,6 +842,11 @@ try {
                 Invoke-PWDownload -InputExcelFile $ConfigFile -Settings $settingsCache -DownloadRows $downloadRangeCache -PWAttributeListRows $pwAttributesListCache -LogsFolder $LogsFolder -PWUser $pwUserValue -PWPass $pwPassValue
             }
             if ($stepResult) { $stepResults.Add($stepResult) | Out-Null }
+            $downloadDetails = @(
+                ("Download status: {0}" -f $global:PWDownloadStatus),
+                ("Downloaded/copied: {0}; Deleted/relocated: {1}" -f $global:PWDownloadedCount, $global:PWDeletedCount)
+            )
+            Set-FEDAUTOStageSummary -Name 'Download' -Status 'Successful' -Reason 'Source acquisition completed.' -Details $downloadDetails
         }
         catch {
             $downloadError = $_.ToString()
@@ -650,8 +856,10 @@ try {
                 Write-Log -Message ("ERROR: {0} {1}" -f $downloadSkipReason, $downloadError) -Color 'Red' -Settings $settingsCache -LogsFolderOverride $LogsFolder -BasePath $basePath
                 $global:PWDownloadedCount = 0
                 $global:PWDeletedCount = 0
+                Set-FEDAUTOStageSummary -Name 'Download' -Status 'Failed' -Reason $downloadSkipReason -Details @($downloadError)
             }
             else {
+                Set-FEDAUTOStageSummary -Name 'Download' -Status 'Failed' -Reason 'Source acquisition failed.' -Details @($downloadError)
                 throw
             }
         }
@@ -661,6 +869,7 @@ try {
             Write-Log -Message ("ERROR: {0} Treating as skipped download." -f $downloadSkipReason) -Color 'Red' -Settings $settingsCache -LogsFolderOverride $LogsFolder -BasePath $basePath
             $global:PWDownloadedCount = 0
             $global:PWDeletedCount = 0
+            Set-FEDAUTOStageSummary -Name 'Download' -Status 'Failed' -Reason $downloadSkipReason
         }
     }
     if ($runIfcDataExtractionEnabled) {
@@ -671,6 +880,7 @@ try {
             Invoke-IfcDataExtraction -Settings $settingsCache -IfcDataExtractionRules $ifcDataExtractionRulesCache -LogsFolder $LogsFolder
         }
         if ($stepResult) { $stepResults.Add($stepResult) | Out-Null }
+        Complete-FEDAUTOStageFromSummary -Stage 'IfcDataExtraction'
     }
     $processedCount = $null
     if (-not $SkipProcess) {
@@ -709,6 +919,7 @@ try {
             if (-not $runProcessRow -or $null -eq $runProcessRow.Value -or [string]::IsNullOrWhiteSpace($runProcessRow.Value.ToString())) {
                 $SkipProcess = $true
                 $message = "Processing disabled by default (RunProcess missing)."
+                Set-FEDAUTOStageSummary -Name 'Process' -Status 'Off' -Reason $message
                 if (Get-Command Write-Log -ErrorAction SilentlyContinue) {
                     Write-Log -Message $message -Color 'Yellow' -Settings $settingsForProcess -LogsFolderOverride $LogsFolder -BasePath $basePath
                 }
@@ -738,6 +949,7 @@ try {
                 elseif ($normalized -in @('no','n','false','0','ignore')) {
                     $SkipProcess = $true
                     $message = ("Processing disabled by Settings parameter '{0}'." -f $runProcessRow.Parameter)
+                    Set-FEDAUTOStageSummary -Name 'Process' -Status 'Off' -Reason $message
                     if (Get-Command Write-Log -ErrorAction SilentlyContinue) {
                         Write-Log -Message $message -Color 'Yellow' -Settings $settingsForProcess -LogsFolderOverride $LogsFolder -BasePath $basePath
                     }
@@ -753,7 +965,9 @@ try {
         if (-not $SkipProcess) {
             if ($downloadSkipForceOnlyMode -and -not $ForceProcess) {
                 $SkipProcess = $true
-                Write-Log -Message ("Processing skipped because download is unavailable ({0}). RunProcess must be Force to continue." -f $downloadSkipReason) -Color 'Yellow' -Settings $settingsCache -LogsFolderOverride $LogsFolder -BasePath $basePath
+                $processSkipMessage = ("Processing skipped because download is unavailable ({0}). RunProcess must be Force to continue." -f $downloadSkipReason)
+                Write-Log -Message $processSkipMessage -Color 'Yellow' -Settings $settingsCache -LogsFolderOverride $LogsFolder -BasePath $basePath
+                Set-FEDAUTOStageSummary -Name 'Process' -Status 'Skipped' -Reason $processSkipMessage
             }
             elseif ($downloadSkipForceOnlyMode -and $ForceProcess) {
                 Write-Log -Message ("Processing is running in Force mode while download is unavailable ({0})." -f $downloadSkipReason) -Color 'Yellow' -Settings $settingsCache -LogsFolderOverride $LogsFolder -BasePath $basePath
@@ -769,6 +983,7 @@ try {
                 Invoke-ProcessIfcAttributes -ConfigFile $ConfigFile -Settings $settingsCache -AttributeDefinitionRows $pwAttributesListCache -FederationRows $federationRangeCache -LookupRows $lookupsRangeCache -AttributeRows $attributeRowsForProcess -AttributesWorkbookPath $processAttributesPath -AttributesWorkbookTimestamp $processAttributesTimestamp -Force:$ForceProcess -LogsFolder $LogsFolder
             }
             if ($stepResult) { $stepResults.Add($stepResult) | Out-Null }
+            Complete-FEDAUTOStageFromSummary -Stage 'Process'
             $summaryPath = $null
             $settings = $settingsCache
             $processedFolderValue = $settings | Where-Object { $_.Parameter -eq "ProcessedFolder" } | Select-Object -ExpandProperty Value
@@ -796,7 +1011,9 @@ try {
     }
     if ($downloadSkipForceOnlyMode -and -not $forceFederate) {
         $SkipFederate = $true
-        Write-Log -Message ("Federation skipped because download is unavailable ({0}). RunFederation must be Force to continue." -f $downloadSkipReason) -Color 'Yellow' -Settings $settingsCache -LogsFolderOverride $LogsFolder -BasePath $basePath
+        $federationSkipMessage = ("Federation skipped because download is unavailable ({0}). RunFederation must be Force to continue." -f $downloadSkipReason)
+        Write-Log -Message $federationSkipMessage -Color 'Yellow' -Settings $settingsCache -LogsFolderOverride $LogsFolder -BasePath $basePath
+        Set-FEDAUTOStageSummary -Name 'Federation' -Status 'Skipped' -Reason $federationSkipMessage
     }
     elseif ($downloadSkipForceOnlyMode -and $forceFederate) {
         Write-Log -Message ("Federation is running in Force mode while download is unavailable ({0})." -f $downloadSkipReason) -Color 'Yellow' -Settings $settingsCache -LogsFolderOverride $LogsFolder -BasePath $basePath
@@ -841,8 +1058,8 @@ try {
             if (Test-Path $wildcardSummaryPath -PathType Leaf) {
                 try {
                     $wildcardSummary = Get-Content -Path $wildcardSummaryPath -Raw | ConvertFrom-Json
-                    $lastWildcardModel = $wildcardSummary.LastCreatedModelPath
-                    if ($wildcardSummary.GroupingMethod -eq 'Wildcard Selection' -and $lastWildcardModel -and (Test-Path $lastWildcardModel -PathType Leaf)) {
+                    $lastWildcardModel = Resolve-FEDAUTOSummaryFilePath -StoredPath $wildcardSummary.LastCreatedModelPath -RelativePath $wildcardSummary.LastCreatedModelRelativePath -RootFolder $outputFolderValue
+                    if ($wildcardSummary.GroupingMethod -eq 'Wildcard Selection' -and $lastWildcardModel -and (Test-Path -LiteralPath $lastWildcardModel -PathType Leaf)) {
                         $finalModelPath = $lastWildcardModel
                         $preModelTimestamp = (Get-Item $finalModelPath).LastWriteTimeUtc
                         $finalModelMissing = $false
@@ -880,9 +1097,9 @@ try {
                     if ($null -ne $federationSummary.IncludeUnmatchedFilesInFederatedModel) {
                         $summaryIncludeUnmatched = $federationSummary.IncludeUnmatchedFilesInFederatedModel.ToString().Trim().ToLowerInvariant() -in @('true','1','yes','y')
                     }
-                    $summaryUnmatchedModelPath = $federationSummary.UnmatchedModelPath
+                    $summaryUnmatchedModelPath = Resolve-FEDAUTOSummaryFilePath -StoredPath $federationSummary.UnmatchedModelPath -RelativePath $federationSummary.UnmatchedModelRelativePath -RootFolder $outputFolderValue
                     if (-not $summaryIncludeUnmatched -and -not $summaryFinalCreated -and $summaryMatchedCount -le 0 -and $summaryUnmatchedCount -gt 0 -and
-                        -not [string]::IsNullOrWhiteSpace($summaryUnmatchedModelPath) -and (Test-Path $summaryUnmatchedModelPath -PathType Leaf)) {
+                        -not [string]::IsNullOrWhiteSpace($summaryUnmatchedModelPath) -and (Test-Path -LiteralPath $summaryUnmatchedModelPath -PathType Leaf)) {
                         $finalModelMissing = $false
                     }
                 }
@@ -956,6 +1173,7 @@ try {
             }
             Write-Host $federatedDisplay -NoNewline -ForegroundColor Green
             Write-Host (" Skipping federation >>>> no federation source files were {0}" -f $changeLabel) -ForegroundColor Red
+            Set-FEDAUTOStageSummary -Name 'Federation' -Status 'Skipped' -Reason ("No federation source files were {0}, no deletions were detected, and the final model already exists." -f $changeLabel) -Details @("Final model: $finalModelPath")
         }
         else {
             $reasons = @()
@@ -971,6 +1189,7 @@ try {
             }
             if ($stepResult) { $stepResults.Add($stepResult) | Out-Null }
             $federationRan = $true
+            Complete-FEDAUTOStageFromSummary -Stage 'Federation'
         }
 
         if ($isWildcardSelection -and $federationRan -and $outputFolderValue) {
@@ -978,8 +1197,9 @@ try {
             if (Test-Path $wildcardSummaryPath -PathType Leaf) {
                 try {
                     $wildcardSummary = Get-Content -Path $wildcardSummaryPath -Raw | ConvertFrom-Json
-                    if ($wildcardSummary.LastCreatedModelPath -and (Test-Path $wildcardSummary.LastCreatedModelPath -PathType Leaf)) {
-                        $finalModelPath = $wildcardSummary.LastCreatedModelPath
+                    $lastWildcardModel = Resolve-FEDAUTOSummaryFilePath -StoredPath $wildcardSummary.LastCreatedModelPath -RelativePath $wildcardSummary.LastCreatedModelRelativePath -RootFolder $outputFolderValue
+                    if ($lastWildcardModel -and (Test-Path -LiteralPath $lastWildcardModel -PathType Leaf)) {
+                        $finalModelPath = $lastWildcardModel
                     }
                 }
                 catch { Write-Warning "Unable to read wildcard federation summary at '$wildcardSummaryPath'. Error: $_" }
@@ -1097,13 +1317,16 @@ try {
                 foreach ($warn in $publishBlockers) {
                     Write-Log -Message $warn -Color 'Yellow' -Settings $settings -LogsFolderOverride $LogsFolder -BasePath $basePath
                 }
+                Set-FEDAUTOStageSummary -Name 'Revizto' -Status 'Skipped' -Reason 'Revizto publish was blocked.' -Details @($publishBlockers.ToArray())
             }
             elseif ($newFederatedModel -or $reviztoForced) {
                 $stepResult = Invoke-Step -Name "Publish Revizto" -Action { Invoke-PublishRevizto -ConfigFile $ConfigFile -Settings $settingsCache -LogsFolder $LogsFolder }
                 if ($stepResult) { $stepResults.Add($stepResult) | Out-Null }
+                Set-FEDAUTOStageSummary -Name 'Revizto' -Status 'Successful' -Reason 'Revizto publish step completed.' -Details @("Model: $finalModelPath")
             }
             else {
                 Write-Log -Message "Revizto publish skipped: no new federated model was created." -Color 'Yellow' -Settings $settings -LogsFolderOverride $LogsFolder -BasePath $basePath
+                Set-FEDAUTOStageSummary -Name 'Revizto' -Status 'Skipped' -Reason 'No new federated model was created.'
             }
         }
     }
@@ -1116,22 +1339,73 @@ try {
             Write-Log -Message ("Revizto publish forced by Settings. Using existing federated model: '{0}'." -f $forcedModelPath) -Color 'Yellow' -Settings $settingsCache -LogsFolderOverride $LogsFolder -BasePath $basePath
             $stepResult = Invoke-Step -Name "Publish Revizto" -Action { Invoke-PublishRevizto -ConfigFile $ConfigFile -Settings $settingsCache -LogsFolder $LogsFolder }
             if ($stepResult) { $stepResults.Add($stepResult) | Out-Null }
+            Set-FEDAUTOStageSummary -Name 'Revizto' -Status 'Successful' -Reason 'Revizto publish was forced and the publish step completed.' -Details @("Model: $forcedModelPath")
         }
         else {
             Write-Log -Message ("Revizto publish force requested, but federated model was not found at '{0}'. Skipping publish." -f $forcedModelPath) -Color 'Yellow' -Settings $settingsCache -LogsFolderOverride $LogsFolder -BasePath $basePath
+            Set-FEDAUTOStageSummary -Name 'Revizto' -Status 'Skipped' -Reason ("Revizto publish force requested, but federated model was not found at '{0}'." -f $forcedModelPath)
         }
     }
     Write-Host ""
     Write-Host "Pipeline finished." -ForegroundColor Green
 }
 catch {
-    $errorMessage = "ERROR: Pipeline halted: $_"
+    $pipelineError = if ($_.Exception -and -not [string]::IsNullOrWhiteSpace($_.Exception.Message)) {
+        $_.Exception.Message
+    }
+    else {
+        $_.ToString()
+    }
+    $errorMessage = "ERROR: Pipeline halted: $pipelineError"
+    $script:FEDAUTOFatalError = $pipelineError
+    if ($pipelineError -match "Step '([^']+)' failed") {
+        $failedStepName = $Matches[1]
+        $failedStageName = switch ($failedStepName) {
+            'Download' { 'Download' }
+            'IFC Data Extraction' { 'IfcDataExtraction' }
+            'Process IFC Attributes' { 'Process' }
+            'Group/Federate Files' { 'Federation' }
+            'Publish Revizto' { 'Revizto' }
+            default { $null }
+        }
+        if ($failedStageName) {
+            Set-FEDAUTOStageSummary -Name $failedStageName -Status 'Failed' -Reason $pipelineError
+        }
+    }
     Write-Host $errorMessage -ForegroundColor Red
     Write-Error $errorMessage
-    throw
+    throw $errorMessage
 }
 finally {
     $pipelineTimer.Stop()
+    Write-Host ""
+    Write-Host "=== Run Summary ===" -ForegroundColor Cyan
+    $stageOrder = @('Download','IfcDataExtraction','Process','Federation','Revizto')
+    foreach ($stageName in $stageOrder) {
+        if (-not $script:FEDAUTOStageSummaries.Contains($stageName)) { continue }
+        $summary = $script:FEDAUTOStageSummaries[$stageName]
+        if ($summary.Enabled -and $summary.Status -eq 'Pending') {
+            if ($script:FEDAUTOFatalError) {
+                $summary.Status = 'Not completed'
+                $summary.Reason = 'Pipeline halted before this stage completed.'
+            }
+            else {
+                $summary.Status = 'Not run'
+                if ([string]::IsNullOrWhiteSpace($summary.Reason)) { $summary.Reason = 'No run condition triggered this enabled stage.' }
+            }
+        }
+        $enabledText = if ($summary.Enabled) { 'On' } else { 'Off' }
+        $reasonText = if ([string]::IsNullOrWhiteSpace($summary.Reason)) { '' } else { " - $($summary.Reason)" }
+        Write-Host ("{0}: {1}; {2}{3}" -f $summary.Name, $enabledText, $summary.Status, $reasonText)
+        foreach ($detail in @($summary.Details | Select-Object -First 6)) {
+            if (-not [string]::IsNullOrWhiteSpace($detail)) {
+                Write-Host ("  - {0}" -f $detail)
+            }
+        }
+        if ($summary.Details.Count -gt 6) {
+            Write-Host ("  - ... {0} more detail(s)" -f ($summary.Details.Count - 6))
+        }
+    }
     Write-Host ""
     Write-Host "=== Pipeline Totals ===" -ForegroundColor Cyan
     foreach ($result in $stepResults) {
@@ -1139,6 +1413,7 @@ finally {
         Write-Host ("{0} duration: {1}" -f $result.Name, (Format-Duration -Duration $result.Duration))
     }
     Write-Host ("Grand total: {0}" -f (Format-Duration -Duration $pipelineTimer.Elapsed)) -ForegroundColor Green
+    Write-Host ("Executable build version: {0}" -f (Format-FEDAUTOExecutableBuildInfo $script:FEDAUTOCurrentBuildInfo))
     # Ensure any active transcripts are closed (including unexpected nested starts).
     $stoppedCount = 0
     while ($true) {

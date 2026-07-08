@@ -1,7 +1,7 @@
 ﻿<#
 Configuration adapters for Federation Automation.
-JSON is the editable, application-friendly format.  Existing Excel named-range
-configuration remains supported so current projects do not need to migrate at once.
+JSON is the editable, application-friendly format. CSV is used for tabular
+runtime metadata such as source attributes.
 #>
 
 function ConvertTo-PipelineSettingsRows {

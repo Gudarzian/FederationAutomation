@@ -167,6 +167,17 @@
                                   "CopyToDestination":  "Yes"
                               }
                           ],
+    "ifcDataExtractionRules":  [
+                                   {
+                                       "Run":  "No",
+                                       "FileInclusions":  "",
+                                       "FileExclusions":  "",
+                                       "TabInclusions":  "",
+                                       "TabExclusions":  "",
+                                       "AttributeInclusions":  "",
+                                       "AttributeExclusions":  ""
+                                   }
+                               ],
     "lookups":  [
                     {
                         "Filename-Part":  "Discipline",
