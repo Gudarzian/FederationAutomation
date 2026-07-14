@@ -73,6 +73,15 @@ function New-FEDAUTOBuildVersion {
     return $version
 }
 
+# Build the Navisworks add-in before it is embedded into the executable.
+$visualStyleBuild = Join-Path $basePath '000-BuildNavisworksVisualStylePlugin.ps1'
+& $visualStyleBuild
+if ($LASTEXITCODE -ne 0) { throw 'Navisworks visual-style plug-in build failed.' }
+$visualStylePlugin = Join-Path $basePath 'NavisworksVisualStylePlugin\bin\Release\net48\FederationAutomation.NavisworksVisualStyle.dll'
+if (-not (Test-Path -LiteralPath $visualStylePlugin -PathType Leaf)) {
+    throw "Navisworks visual-style plug-in was not produced: $visualStylePlugin"
+}
+
 # Files to bundle into the EXE
 $includes = @(
     '012-SharedFunctions.Ps1',
@@ -83,6 +92,7 @@ $includes = @(
     '041-FederationFunctions.Ps1'
 )
 $includePaths = $includes | ForEach-Object { Join-Path $basePath $_ }
+$includePaths += $visualStylePlugin
 
 # Stage bundled files in a temp folder without spaces to avoid PS2EXE parsing issues
 $bundleDir = Join-Path ([System.IO.Path]::GetTempPath()) "006Main_bundle"

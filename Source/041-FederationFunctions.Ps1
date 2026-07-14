@@ -293,6 +293,24 @@ Finds the highest installed Navisworks Manage version (year) from Program Files.
     return $null
 }
 
+function Resolve-NavisworksVisualStylePluginPath {
+<#
+Resolves the bundled Navisworks add-in that persists the federation visual style.
+#>
+    [CmdletBinding()]
+    param([string]$BasePath)
+
+    $root = if ($BasePath) { $BasePath } else { $PSScriptRoot }
+    $fileName = 'FederationAutomation.NavisworksVisualStyle.dll'
+    $candidate = Join-Path $root $fileName
+    if (Test-Path -LiteralPath $candidate -PathType Leaf) { return $candidate }
+    $developmentCandidate = Join-Path $root 'NavisworksVisualStylePlugin\bin\Release\net48\FederationAutomation.NavisworksVisualStyle.dll'
+    if (Test-Path -LiteralPath $developmentCandidate -PathType Leaf) { return $developmentCandidate }
+    $resolved = Resolve-SupportFile -FileName $fileName -BasePath $root
+    if ($resolved -and (Test-Path -LiteralPath $resolved -PathType Leaf)) { return $resolved }
+    return $null
+}
+
 function Resolve-NavisworksOptionsPath {
     [CmdletBinding()]
     param(
@@ -595,6 +613,7 @@ Creates a Navisworks model from a group node.
         $NavisworksOptions = $NavisworksOptions,
         $NavisworksOptionsPath = $NavisworksOptionsPath,
         $NavisworksViewsImportXmlPath = $NavisworksViewsImportXmlPath,
+        [string]$NavisworksVisualStylePluginPath = $NavisworksVisualStylePluginPath,
         $OutputFormat = 'NWD',
         $BasePath = $BasePath
     )
@@ -616,7 +635,6 @@ Creates a Navisworks model from a group node.
     foreach ($Inputfile in $InputFiles.Children) {
         $arg += '-AppendFile', $Inputfile
     }
-    $arg += '-SaveFile', $outputModel
     $arg += $GNWUI
 
     # Resolve options: Settings override > fallback to NavisworksOptions.xml.
@@ -639,6 +657,12 @@ Creates a Navisworks model from a group node.
     if ($NavisworksViewsImportXmlPath) {
         $arg += '-ExecuteAddInPlugin', 'NativeExportPluginAdaptor_XmlViewpointsImportPlugin_Import.Navisworks', $NavisworksViewsImportXmlPath
     }
+    if ($NavisworksVisualStylePluginPath) {
+        # Load and run the add-in before saving so the visual state is persisted in the output.
+        $arg += '-AddPluginAssembly', $NavisworksVisualStylePluginPath
+        $arg += '-ExecuteAddInPlugin', 'FederationAutomationVisualStyle.FEDAUTO'
+    }
+    $arg += '-SaveFile', $outputModel
     $arg += '-Exit'
 
     # Build command string for logging and reproducibility.
@@ -696,6 +720,7 @@ function FederateGroup {
         [int]$Level = 0,
         [string]$NavisworksOptionsPath,
         [string]$NavisworksOptions,
+        [string]$NavisworksVisualStylePluginPath,
         [string]$OutputFormat = 'NWD',
         [string]$BasePath
     )
@@ -713,12 +738,12 @@ function FederateGroup {
             FullName = $Group.FullName
             Children = $childOutputs
         }
-        $res = CreateNwd -InputFiles $groupForCreate -NavisworksOptionsPath $NavisworksOptionsPath -NavisworksOptions $NavisworksOptions -OutputFormat $OutputFormat -BasePath $BasePath
+        $res = CreateNwd -InputFiles $groupForCreate -NavisworksOptionsPath $NavisworksOptionsPath -NavisworksOptions $NavisworksOptions -NavisworksVisualStylePluginPath $NavisworksVisualStylePluginPath -OutputFormat $OutputFormat -BasePath $BasePath
         return $res.Model
     }
     else {
         foreach ($file in $Group.Children) { Write-Host "$indent  $file" }
-        $res = CreateNwd -InputFiles $Group -NavisworksOptionsPath $NavisworksOptionsPath -NavisworksOptions $NavisworksOptions -OutputFormat $OutputFormat -BasePath $BasePath
+        $res = CreateNwd -InputFiles $Group -NavisworksOptionsPath $NavisworksOptionsPath -NavisworksOptions $NavisworksOptions -NavisworksVisualStylePluginPath $NavisworksVisualStylePluginPath -OutputFormat $OutputFormat -BasePath $BasePath
         return $res.Model
     }
 }
@@ -1024,6 +1049,17 @@ Groups IFCs and federates them into Navisworks outputs.
         return
     }
     $nwdSaveVersionOption = Resolve-NavisworksSavedNwdVersion -Value $NavisworksSavedNwdVersion -NavisworksVersion $NavisworksVersion
+    $NavisworksVisualStylePluginPath = Resolve-NavisworksVisualStylePluginPath -BasePath $basePath
+    if (-not $NavisworksVisualStylePluginPath) {
+        $reason = 'The Federation Automation Navisworks visual-style plug-in was not found. Rebuild the application package before running federation.'
+        Write-Host ("Federation skipped: {0}" -f $reason) -ForegroundColor Yellow
+        Write-Log -Message ("Federation skipped: {0}" -f $reason) -Color 'Yellow' -Settings $ConfigSettings -LogsFolderOverride $LogsFolder -BasePath $basePath
+        if ($TranscriptStarted) {
+            Stop-Transcript | Out-Null
+            $global:MainTranscriptActive = $false
+        }
+        return
+    }
     $resolvedOptionsPath = Resolve-NavisworksOptionsPath -Value $NavisworksOptions -BasePath $basePath
     if (-not $resolvedOptionsPath -and -not $nwdSaveVersionOption.IsLatest) {
         $reason = "NavisworksSavedNwdVersion '$($nwdSaveVersionOption.Requested)' requires a Navisworks options XML, but '$NavisworksOptions' was not found."
@@ -1045,6 +1081,7 @@ Groups IFCs and federates them into Navisworks outputs.
         Write-Host "Temporary Navisworks options XML: $TemporaryNavisworksOptionsPath"
     }
     Write-Host "Saved NWD version: $($nwdSaveVersionOption.Requested) ($($nwdSaveVersionOption.DisplayValue))"
+    Write-Host "Navisworks visual style: Full Render with graduated background ($NavisworksVisualStylePluginPath)"
     if ($NavisworksViewsImportXmlPath) {
         Write-Host "Navisworks viewpoints import XML (final model only): $NavisworksViewsImportXmlPath"
     }
@@ -1138,7 +1175,7 @@ Groups IFCs and federates them into Navisworks outputs.
                 Complete-FederationNwdProgress -Status 'Skipped' -Name $outputName
                 continue
             }
-            $result = CreateNwd -InputFiles ([pscustomobject]@{ FullName=$outputName; Children=$matches }) -OutputPath $OutputPath -NavisworksVersion $NavisworksVersion -NavisworksOptionsPath $NavisworksOptions -NavisworksOptions $NavisworksOptions -OutputFormat $ruleOutputFormat -BasePath $basePath
+            $result = CreateNwd -InputFiles ([pscustomobject]@{ FullName=$outputName; Children=$matches }) -OutputPath $OutputPath -NavisworksVersion $NavisworksVersion -NavisworksOptionsPath $NavisworksOptions -NavisworksOptions $NavisworksOptions -NavisworksVisualStylePluginPath $NavisworksVisualStylePluginPath -OutputFormat $ruleOutputFormat -BasePath $basePath
             if (-not $result.Model -or -not (Test-Path -LiteralPath $result.Model -PathType Leaf)) { throw "Wildcard rule $($ruleIndex + 1) failed to create '$outputName$ruleOutputExtension'." }
             $lastCreatedModelPath = $result.Model
             if ($copyToDestination) {
@@ -1294,7 +1331,7 @@ Groups IFCs and federates them into Navisworks outputs.
         $script:FEDAUTONwdProgressCurrent = 0
         Write-FederationNwdProgress -Status 'Queued' -Name 'Grouped federation'
         $TopOutputs = foreach ($top in $GroupedStructure) {
-            FederateGroup -Group $top -NavisworksOptionsPath $NavisworksOptions -NavisworksOptions $NavisworksOptions -BasePath $basePath
+            FederateGroup -Group $top -NavisworksOptionsPath $NavisworksOptions -NavisworksOptions $NavisworksOptions -NavisworksVisualStylePluginPath $NavisworksVisualStylePluginPath -BasePath $basePath
         }
         Write-Host "Top-level federated outputs:" -ForegroundColor Green
         $TopOutputs | ForEach-Object { Write-Host "  $_" }
@@ -1317,7 +1354,7 @@ Groups IFCs and federates them into Navisworks outputs.
             FullName = ("{0} - Unmatched Files" -f $FederatedFileName)
             Children = $unmatchedFiles
         }
-        $unmatchedRes = CreateNwd -InputFiles $unmatchedGroup -NavisworksOptionsPath $NavisworksOptions -NavisworksOptions $NavisworksOptions -BasePath $basePath
+        $unmatchedRes = CreateNwd -InputFiles $unmatchedGroup -NavisworksOptionsPath $NavisworksOptions -NavisworksOptions $NavisworksOptions -NavisworksVisualStylePluginPath $NavisworksVisualStylePluginPath -BasePath $basePath
         $unmatchedModelPath = if ($unmatchedRes) { $unmatchedRes.Model } else { $null }
         if ([string]::IsNullOrWhiteSpace($unmatchedModelPath) -or -not (Test-Path $unmatchedModelPath -PathType Leaf)) {
             $message = "Federation failed: unmatched-files NWD was not created."
@@ -1340,7 +1377,7 @@ Groups IFCs and federates them into Navisworks outputs.
             FullName = $FederatedFileName
             Children = $finalInputModels
         }
-        $finalRes = CreateNwd -InputFiles $finalGroup -NavisworksOptionsPath $NavisworksOptions -NavisworksOptions $NavisworksOptions -NavisworksViewsImportXmlPath $NavisworksViewsImportXmlPath -OutputFormat $finalOutputFormat -BasePath $basePath
+        $finalRes = CreateNwd -InputFiles $finalGroup -NavisworksOptionsPath $NavisworksOptions -NavisworksOptions $NavisworksOptions -NavisworksViewsImportXmlPath $NavisworksViewsImportXmlPath -NavisworksVisualStylePluginPath $NavisworksVisualStylePluginPath -OutputFormat $finalOutputFormat -BasePath $basePath
         $finalModelPath = if ($finalRes) { $finalRes.Model } else { $null }
         if ([string]::IsNullOrWhiteSpace($finalModelPath) -or -not (Test-Path $finalModelPath -PathType Leaf)) {
             $message = ("Federation failed: final federated model was not created. Expected output path: '{0}'." -f $finalModelPath)
