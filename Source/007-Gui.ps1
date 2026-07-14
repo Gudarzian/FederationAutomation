@@ -406,7 +406,7 @@ function Get-FEDAUTOColumnHelpText {
         'Filename-Part' = 'Position in the filename naming convention, or FileExtension for the extension.'
         GroupOrder = 'Grouping order. Use 0 for filename parts that are not grouping levels.'
         Description = 'User note or readable description. Some lookup descriptions are resolved from the Lookups table.'
-        Inclusions = 'Comma-separated wildcard filters. A file is included when it matches any pattern.'
+        Inclusions = 'Comma-separated wildcard filters. A file is included when it matches any pattern. An NWD can be included only by listing its exact file name, for example Coordination.nwd.'
         Exclusions = 'Comma-separated wildcard filters. A file is excluded when it matches any pattern.'
         FileInclusions = 'Comma-separated wildcard filters for IFC file names. Blank includes every IFC file.'
         FileExclusions = 'Comma-separated wildcard filters for IFC file names to exclude after file inclusions are applied.'
@@ -1800,15 +1800,24 @@ function Get-FEDAUTOFederationFolders {
 }
 
 function Get-FEDAUTOFederationCandidateFiles {
-    param([string]$Path)
+    param([string]$Path, [string[]]$ExplicitNwdNames = @())
     if (-not (Test-Path -LiteralPath $Path -PathType Container)) { return @() }
     $allFiles = @(Get-ChildItem -LiteralPath $Path -File -ErrorAction Stop)
     $extensions = @(Get-FederatableModelExtensions | ForEach-Object { $_.ToLowerInvariant() })
     $sourceNames = @($allFiles | Where-Object { $_.Extension.ToLowerInvariant() -in @('.ifc','.dwg','.dgn','.rvt') } | Select-Object -ExpandProperty Name)
-    return @($allFiles | Where-Object {
+    $candidates = @($allFiles | Where-Object {
         $ext = $_.Extension.ToLowerInvariant()
         ($extensions -contains $ext) -and -not ($ext -eq '.nwc' -and (Test-GeneratedNwcForSourceNames -NwcName $_.Name -SourceNames $sourceNames))
     })
+    # NWDs are included only when a filter names the exact file, rather than
+    # allowing broad wildcards to pull every existing federation into a rule.
+    $explicitNames = @($ExplicitNwdNames | Where-Object {
+        $_ -and $_ -notmatch '[*?]' -and $_.EndsWith('.nwd', [StringComparison]::OrdinalIgnoreCase)
+    })
+    if ($explicitNames.Count -gt 0) {
+        $candidates += @($allFiles | Where-Object { $_.Extension -ieq '.nwd' -and $explicitNames -contains $_.Name })
+    }
+    return @($candidates | Sort-Object FullName -Unique)
 }
 
 function Add-FEDAUTOGroupingPreviewCandidate {
@@ -1942,7 +1951,8 @@ function Show-FEDAUTOGroupingPreview {
                 }
             }
             else {
-                foreach ($candidateFile in @(Get-FEDAUTOFederationCandidateFiles -Path $sourcePath)) {
+                $explicitNwdNames = @($patterns | Where-Object { $_ -notmatch '[*?]' -and $_.EndsWith('.nwd', [StringComparison]::OrdinalIgnoreCase) })
+                foreach ($candidateFile in @(Get-FEDAUTOFederationCandidateFiles -Path $sourcePath -ExplicitNwdNames $explicitNwdNames)) {
                     Add-FEDAUTOGroupingPreviewCandidate -Candidates ([ref]$candidates) -Seen $candidateKeys -Candidate ([pscustomobject]@{ Name=$candidateFile.Name; FullName=$candidateFile.FullName; Planned=$false })
                 }
             }

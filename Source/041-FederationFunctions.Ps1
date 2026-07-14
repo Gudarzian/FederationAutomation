@@ -1113,7 +1113,18 @@ Groups IFCs and federates them into Navisworks outputs.
                 @(Get-ChildItem -LiteralPath $sourcePath -File -ErrorAction Stop | Where-Object { $_.FullName -ne $targetPath })
             }
             else {
-                @(Get-FederationCandidateFiles -Path $sourcePath -Extensions $federatableExtensions | Where-Object { $_.FullName -ne $targetPath })
+                $sourceCandidates = @(Get-FederationCandidateFiles -Path $sourcePath -Extensions $federatableExtensions)
+                # NWDs are not general source inputs, but a rule may explicitly
+                # name one to federate a pre-built Navisworks model.
+                $explicitNwdNames = @($inclusions | Where-Object {
+                    $_ -notmatch '[*?]' -and $_.EndsWith('.nwd', [System.StringComparison]::OrdinalIgnoreCase)
+                })
+                if ($explicitNwdNames.Count -gt 0) {
+                    $sourceCandidates += @(Get-ChildItem -LiteralPath $sourcePath -File -Filter '*.nwd' -ErrorAction Stop | Where-Object {
+                        $explicitNwdNames -contains $_.Name
+                    })
+                }
+                @($sourceCandidates | Where-Object { $_.FullName -ne $targetPath } | Sort-Object FullName -Unique)
             }
             $matches = @($candidates | Where-Object {
                 $name = $_.Name
