@@ -223,6 +223,7 @@ The GUI can open JSON files where optional sections are missing, then writes the
 | `FederatedFileName` | Final naming-convention output name. Use `.nwf` only when the final output should be NWF; otherwise NWD is used. |
 | `NavisworksVersion` | Preferred Navisworks Manage year, such as `2026` or `2027`. Blank enables auto-detect. |
 | `NavisworksConfigXML` | Optional Navisworks options XML. Needed for older NWD save versions. |
+| Navisworks visual style | Every federation output is saved in `Full Render` style with a graduated background. This is enforced by the bundled Federation Automation Navisworks add-in. |
 | `NavisworksSavedNwdVersion` | `Latest`, `2027`, `2026`, or `2016-2025`. |
 | `NavisworksViewsImportXML` | Optional saved viewpoints XML, imported into the final naming-convention model only. |
 | `NavisworksVisible` | `Yes` shows Navisworks; `No` runs it in the background. |
