@@ -2564,6 +2564,44 @@ $DownloadGrid.AddHandler([Windows.Controls.Button]::ClickEvent, [Windows.RoutedE
     if ($selectedPath) { $row.ReadFolder = ConvertTo-FEDAUTOStoredPath $selectedPath; $DownloadGrid.Items.Refresh(); Set-FEDAUTOConfigurationDirty -Dirty:$true }
     $eventArgs.Handled = $true
 })
+$DownloadGrid.AddHandler([Windows.Input.Mouse]::PreviewMouseDownEvent, [Windows.Input.MouseButtonEventHandler]{
+    param($sender, $eventArgs)
+    if ($eventArgs.ChangedButton -ne [Windows.Input.MouseButton]::Left) { return }
+
+    # DataGridCheckBoxColumn normally spends its first click entering edit
+    # mode. Toggle the Download Enabled checkbox immediately.
+    $element = $eventArgs.OriginalSource
+    while ($element -and -not ($element -is [Windows.Controls.DataGridCell])) {
+        $element = [Windows.Media.VisualTreeHelper]::GetParent($element)
+    }
+    if (-not $element -or $element.Column.SortMemberPath -ne 'Run') { return }
+
+    $row = $element.DataContext
+    if ($null -eq $row -or -not ($row.PSObject.Properties.Name -contains 'Run')) { return }
+    $row.Run = -not (ConvertTo-FEDAUTOBoolean $row.Run)
+    $DownloadGrid.Items.Refresh()
+    Set-FEDAUTOConfigurationDirty -Dirty:$true
+    $eventArgs.Handled = $true
+}, $true)
+$WildcardSelectionGrid.AddHandler([Windows.Input.Mouse]::PreviewMouseDownEvent, [Windows.Input.MouseButtonEventHandler]{
+    param($sender, $eventArgs)
+    if ($eventArgs.ChangedButton -ne [Windows.Input.MouseButton]::Left) { return }
+
+    # DataGridCheckBoxColumn normally spends its first click entering edit
+    # mode. Toggle the Wildcard Selection Enabled checkbox immediately.
+    $element = $eventArgs.OriginalSource
+    while ($element -and -not ($element -is [Windows.Controls.DataGridCell])) {
+        $element = [Windows.Media.VisualTreeHelper]::GetParent($element)
+    }
+    if (-not $element -or $element.Column.SortMemberPath -ne 'Run') { return }
+
+    $row = $element.DataContext
+    if ($null -eq $row -or -not ($row.PSObject.Properties.Name -contains 'Run')) { return }
+    $row.Run = -not (ConvertTo-FEDAUTOBoolean $row.Run)
+    $WildcardSelectionGrid.Items.Refresh()
+    Set-FEDAUTOConfigurationDirty -Dirty:$true
+    $eventArgs.Handled = $true
+}, $true)
 $FederationGrid.AddHandler([Windows.Controls.Button]::ClickEvent, [Windows.RoutedEventHandler]{
     param($sender, $eventArgs)
     $button = $eventArgs.OriginalSource
