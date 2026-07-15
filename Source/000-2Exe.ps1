@@ -4,7 +4,8 @@ must sit beside the EXE at runtime.
 #>
 [CmdletBinding()]
 param(
-    [string]$OutputFile
+    [string]$OutputFile,
+    [string]$NavisworksVersion = ''
 )
 
 # ps2exe 1.x compilation can silently fail under pwsh; always build under Windows PowerShell.
@@ -17,6 +18,9 @@ if ($PSVersionTable.PSEdition -ne 'Desktop') {
     $relaunchArgs = @('-NoProfile', '-File', $PSCommandPath)
     if ($OutputFile) {
         $relaunchArgs += @('-OutputFile', $OutputFile)
+    }
+    if (-not [string]::IsNullOrWhiteSpace($NavisworksVersion)) {
+        $relaunchArgs += @('-NavisworksVersion', $NavisworksVersion)
     }
     & $desktopPwsh @relaunchArgs
     exit $LASTEXITCODE
@@ -74,10 +78,18 @@ function New-FEDAUTOBuildVersion {
 }
 
 # Build the Navisworks add-in before it is embedded into the executable.
-$visualStyleBuild = Join-Path $basePath '000-BuildNavisworksVisualStylePlugin.ps1'
-& $visualStyleBuild
-if ($LASTEXITCODE -ne 0) { throw 'Navisworks visual-style plug-in build failed.' }
-$visualStylePlugin = Join-Path $basePath 'NavisworksVisualStylePlugin\bin\Release\net48\FederationAutomation.NavisworksVisualStyle.dll'
+$functionsDepository = Join-Path $basePath '011-FunctionsDepository.Ps1'
+if (-not (Test-Path -LiteralPath $functionsDepository -PathType Leaf)) {
+    throw "Function depository not found: $functionsDepository"
+}
+. $functionsDepository
+
+if ([string]::IsNullOrWhiteSpace($NavisworksVersion)) {
+    $visualStylePlugin = Build-FEDAUTOVisualStylePlugin
+}
+else {
+    $visualStylePlugin = Build-FEDAUTOVisualStylePlugin -NavisworksVersion $NavisworksVersion
+}
 if (-not (Test-Path -LiteralPath $visualStylePlugin -PathType Leaf)) {
     throw "Navisworks visual-style plug-in was not produced: $visualStylePlugin"
 }

@@ -955,6 +955,29 @@ Groups IFCs and federates them into Navisworks outputs.
             Write-Log -Message $warning -Color 'Yellow' -Settings $ConfigSettings -LogsFolderOverride $LogsFolder -BasePath $basePath
         }
     }
+    $applyVisualStyleSetting = $ConfigSettings | Where-Object {
+        $paramRaw = $_.Parameter
+        $paramText = if (Get-Command Normalize-ExcelText -ErrorAction SilentlyContinue) {
+            Normalize-ExcelText -Text $paramRaw
+        }
+        else {
+            if ($null -ne $paramRaw) { $paramRaw.ToString().Trim() } else { $null }
+        }
+        if ([string]::IsNullOrWhiteSpace($paramText)) { return $false }
+        $paramText.ToLowerInvariant() -eq 'applynavisworksvisualstyle'
+    } | Select-Object -First 1
+    $applyNavisworksVisualStyle = $true
+    if ($applyVisualStyleSetting -and $null -ne $applyVisualStyleSetting.Value) {
+        $visualStyleValue = if (Get-Command Normalize-ExcelText -ErrorAction SilentlyContinue) {
+            Normalize-ExcelText -Text $applyVisualStyleSetting.Value
+        }
+        else {
+            $applyVisualStyleSetting.Value.ToString().Trim()
+        }
+        if (-not [string]::IsNullOrWhiteSpace($visualStyleValue)) {
+            $applyNavisworksVisualStyle = $visualStyleValue.ToLowerInvariant() -notin @('no','n','false','0','ignore')
+        }
+    }
     $FederatedFileName = $ConfigSettings | Where-Object { $_.Parameter -eq "FederatedFileName" } | Select-Object -ExpandProperty Value
     if ([string]::IsNullOrWhiteSpace($FederatedFileName)) { $FederatedFileName = 'Project Federated' }
     $finalOutputFormat = if (Test-FinalNavisworksFileNameIsNwf -Name $FederatedFileName) { 'NWF' } else { 'NWD' }
@@ -1049,8 +1072,11 @@ Groups IFCs and federates them into Navisworks outputs.
         return
     }
     $nwdSaveVersionOption = Resolve-NavisworksSavedNwdVersion -Value $NavisworksSavedNwdVersion -NavisworksVersion $NavisworksVersion
-    $NavisworksVisualStylePluginPath = Resolve-NavisworksVisualStylePluginPath -BasePath $basePath
-    if (-not $NavisworksVisualStylePluginPath) {
+    $NavisworksVisualStylePluginPath = $null
+    if ($applyNavisworksVisualStyle) {
+        $NavisworksVisualStylePluginPath = Resolve-NavisworksVisualStylePluginPath -BasePath $basePath
+    }
+    if ($applyNavisworksVisualStyle -and -not $NavisworksVisualStylePluginPath) {
         $reason = 'The Federation Automation Navisworks visual-style plug-in was not found. Rebuild the application package before running federation.'
         Write-Host ("Federation skipped: {0}" -f $reason) -ForegroundColor Yellow
         Write-Log -Message ("Federation skipped: {0}" -f $reason) -Color 'Yellow' -Settings $ConfigSettings -LogsFolderOverride $LogsFolder -BasePath $basePath
@@ -1081,7 +1107,12 @@ Groups IFCs and federates them into Navisworks outputs.
         Write-Host "Temporary Navisworks options XML: $TemporaryNavisworksOptionsPath"
     }
     Write-Host "Saved NWD version: $($nwdSaveVersionOption.Requested) ($($nwdSaveVersionOption.DisplayValue))"
-    Write-Host "Navisworks visual style: Full Render with graduated background ($NavisworksVisualStylePluginPath)"
+    if ($applyNavisworksVisualStyle) {
+        Write-Host "Navisworks visual style: Full Render with graduated background ($NavisworksVisualStylePluginPath)"
+    }
+    else {
+        Write-Host "Navisworks visual style: [disabled]"
+    }
     if ($NavisworksViewsImportXmlPath) {
         Write-Host "Navisworks viewpoints import XML (final model only): $NavisworksViewsImportXmlPath"
     }

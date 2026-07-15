@@ -320,7 +320,7 @@ function Normalize-FEDAUTOGroupOrders {
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Title="Federation Automation" Height="820" Width="1280" MinHeight="620" MinWidth="960" WindowStartupLocation="CenterScreen" Background="#F5F7FA">
   <DockPanel>
     <Border DockPanel.Dock="Top" Background="#07345C" Padding="24,16"><StackPanel><TextBlock Text="Federation Automation" Foreground="White" FontSize="28" FontWeight="SemiBold"/><TextBlock Text="Configuration and model federation" Foreground="#C9D8E6" FontSize="15"/></StackPanel></Border>
-    <Border DockPanel.Dock="Bottom" Background="White" Padding="16" BorderBrush="#D5DCE3" BorderThickness="0,1,0,0"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Name="StatusText" Text="Ready" VerticalAlignment="Center" Foreground="#425466" TextWrapping="Wrap" MaxHeight="42" Margin="0,0,16,0"/><StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center"><Button Name="ExportExcelButton" Content="Export Excel..." Visibility="Collapsed" Padding="16,7" Margin="0,0,10,0"/><Button Name="ValidateButton" Content="Preflight" Padding="16,7" Margin="0,0,10,0"/><Button Name="ReportIssueButton" Content="Report Issue" Padding="16,7" Margin="0,0,10,0"/><Button Name="SaveButton" Content="Save" Padding="22,7" Margin="0,0,10,0"/><Button Name="RunButton" Content="Save and Run" Padding="22,7" Background="#0867C8" Foreground="White" FontWeight="SemiBold"/></StackPanel></Grid></Border>
+    <Border DockPanel.Dock="Bottom" Background="White" Padding="16" BorderBrush="#D5DCE3" BorderThickness="0,1,0,0"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Name="StatusText" Text="Ready" VerticalAlignment="Center" Foreground="#425466" TextWrapping="Wrap" MaxHeight="42" Margin="0,0,16,0"/><StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center"><Button Name="ExportExcelButton" Content="Export Excel..." Visibility="Collapsed" Padding="16,7" Margin="0,0,10,0"/><Button Name="ValidateButton" Content="Preflight" Padding="16,7" Margin="0,0,10,0"/><Button Name="ReportIssueButton" Content="Report Issue" Padding="16,7" Margin="0,0,10,0"/><Button Name="CancelRunButton" Content="Cancel Run" Visibility="Collapsed" Padding="16,7" Margin="0,0,10,0" Background="#B91C1C" Foreground="White" FontWeight="SemiBold"/><Button Name="SaveButton" Content="Save" Padding="22,7" Margin="0,0,10,0"/><Button Name="RunButton" Content="Save and Run" Padding="22,7" Background="#0867C8" Foreground="White" FontWeight="SemiBold"/></StackPanel></Grid></Border>
     <Grid Margin="24"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
       <Grid Grid.Row="0" Margin="0,0,0,16"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBox Name="ConfigPathBox" FontSize="15" Padding="10" VerticalContentAlignment="Center"/><Button Name="OpenButton" Grid.Column="1" Content="Open..." Padding="18,8" Margin="10,0,0,0"/><Button Name="NewButton" Grid.Column="2" Content="New JSON" Padding="18,8" Margin="10,0,0,0"/></Grid>
       <TabControl Grid.Row="1" Name="MainTabs"><TabItem Header="Settings"><ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Name="SettingsPanel" Margin="20"/></ScrollViewer></TabItem>
@@ -330,7 +330,7 @@ function Normalize-FEDAUTOGroupOrders {
         <TabItem Name="GroupingTab" Header="Grouping"><DockPanel Margin="10"><Border Name="GroupingPreviewPanel" DockPanel.Dock="Top" Background="#DFF0C8" Padding="10,7" Margin="0,0,0,10" CornerRadius="3"><DockPanel><Button Name="PreviewGroupingButton" DockPanel.Dock="Right" Content="Preview Grouping" Padding="12,4" Margin="10,0,0,0"/><TextBlock Name="GroupingPreviewText" Text="Preview how source files will be grouped and federated before running Navisworks." TextWrapping="Wrap" VerticalAlignment="Center"/></DockPanel></Border><StackPanel Name="GroupingOptionsPanel" DockPanel.Dock="Top" Margin="0,0,0,10"/><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><DataGrid Name="WildcardSelectionGrid" Grid.Column="0" Visibility="Collapsed" AutoGenerateColumns="True" CanUserAddRows="False" CanUserDeleteRows="True" EnableRowVirtualization="False" VirtualizingPanel.IsVirtualizing="False" ClipboardCopyMode="ExcludeHeader"/><DataGrid Name="FederationGrid" Grid.Column="0" AutoGenerateColumns="True" CanUserAddRows="True" CanUserDeleteRows="True" EnableRowVirtualization="False" VirtualizingPanel.IsVirtualizing="False" ClipboardCopyMode="ExcludeHeader"/><StackPanel Name="WildcardSelectionButtonsPanel" Grid.Column="1" Visibility="Collapsed" Margin="8,0,0,0" VerticalAlignment="Top"><Button Name="WildcardAddRowButton" Content="+" ToolTip="Add wildcard rule" Width="32" Height="28" Margin="0,0,0,6" FontWeight="Bold"/><Button Name="WildcardMoveUpButton" Content="&#x25B2;" ToolTip="Move selected wildcard rule up" Width="32" Height="28" Margin="0,0,0,6"/><Button Name="WildcardMoveDownButton" Content="&#x25BC;" ToolTip="Move selected wildcard rule down" Width="32" Height="28" Margin="0,0,0,6"/><Button Name="WildcardDuplicateRowButton" Content="D" ToolTip="Duplicate selected wildcard rule" Width="32" Height="28" Margin="0,0,0,6" FontWeight="Bold"/><Button Name="WildcardDeleteRowButton" Content="X" ToolTip="Delete selected wildcard rule" Width="32" Height="28" Foreground="#B91C1C" FontWeight="Bold"/></StackPanel></Grid></DockPanel></TabItem>
         <TabItem Name="LookupsTab" Header="Lookups"><DataGrid Name="LookupsGrid" Margin="10" AutoGenerateColumns="True" CanUserAddRows="True" CanUserDeleteRows="True" EnableRowVirtualization="False" VirtualizingPanel.IsVirtualizing="False" ClipboardCopyMode="ExcludeHeader"/></TabItem>
         <TabItem Name="RunTab" Header="Run"><Grid Margin="18"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions><TextBlock Text="Run dashboard" FontSize="22" FontWeight="SemiBold"/><TextBlock Grid.Row="1" Text="Save the configuration, then run the same pipeline used by the command-line launcher." Foreground="#566573" Margin="0,8,0,14"/><Border Grid.Row="2" Background="White" BorderBrush="#D5DCE3" BorderThickness="1" CornerRadius="4" Padding="16" Margin="0,0,0,12"><StackPanel><TextBlock Text="Overall status" Foreground="#566573"/><TextBlock Name="RunStageText" Text="Ready" FontSize="18" FontWeight="Bold" Margin="0,3,0,2"/><TextBlock Name="RunDetailText" Text="Waiting to start." Foreground="#425466" TextTrimming="CharacterEllipsis"/><ProgressBar Name="RunProgressBar" Minimum="0" Maximum="100" Value="0" Height="14" Margin="0,12,0,0"/></StackPanel></Border><Border Grid.Row="3" Background="White" BorderBrush="#D5DCE3" BorderThickness="1" CornerRadius="4" Padding="18"><Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions><TextBlock Text="Live activity" FontSize="18" FontWeight="SemiBold"/><RichTextBox Name="ActivityBox" Grid.Row="1" Margin="0,12,0,0" IsReadOnly="True" VerticalScrollBarVisibility="Auto"/></Grid></Border></Grid></TabItem>
-        <TabItem Header="About"><ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="28" MaxWidth="920"><TextBlock Text="Federation Automation" FontSize="24" FontWeight="SemiBold" Margin="0,0,0,10"/><TextBlock Text="Federation Automation prepares model delivery sets by acquiring source files, optionally extracting IFC object data, optionally injecting metadata into IFC files, grouping models by naming rules or wildcard selections, building Navisworks NWD outputs, and optionally publishing the latest valid federation to Revizto." TextWrapping="Wrap" Foreground="#425466" Margin="0,0,0,12"/><TextBlock Text="Stages are connected by the configured working folders: source acquisition writes to SourceFolder, IFC processing can write to ProcessedFolder, data extraction exports CSV files to IfcDataExtractionFolder, and federation reads the selected input folder to create Output and Destination results. Each stage can be enabled, disabled, or forced from Settings, so the tool can run the whole pipeline or only the parts needed for a specific update." TextWrapping="Wrap" Foreground="#425466" Margin="0,0,0,18"/><Border Background="White" BorderBrush="#D5DCE3" BorderThickness="1" CornerRadius="4" Padding="16" Margin="0,0,0,14"><StackPanel><TextBlock Text="Manual and source" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8"/><TextBlock Text="Manual, templates, and source repository: https://github.com/Gudarzian/FederationAutomation" TextWrapping="Wrap" Foreground="#425466"/></StackPanel></Border><Border Background="White" BorderBrush="#D5DCE3" BorderThickness="1" CornerRadius="4" Padding="16" Margin="0,0,0,14"><StackPanel><TextBlock Text="Contact" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8"/><TextBlock Text="Goody Gudarzian" Margin="0,0,0,4"/><TextBlock Text="Email: gudarz@gmail.com" Margin="0,0,0,4"/><TextBlock Text="Phone: 0449707566"/></StackPanel></Border><Border Background="White" BorderBrush="#D5DCE3" BorderThickness="1" CornerRadius="4" Padding="16"><StackPanel><TextBlock Text="License" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8"/><TextBlock Text="Copyright (c) 2026 Gudarzian" TextWrapping="Wrap" Margin="0,0,0,8"/><TextBlock Text="Licensed under the PolyForm Noncommercial License 1.0.0. You may use, copy, modify, and share the software for noncommercial purposes under the license terms. Commercial use, including selling this software or using it as part of a paid service or product, requires separate permission from the copyright holder." TextWrapping="Wrap" Foreground="#425466" Margin="0,0,0,8"/><TextBlock Text="Full license terms: https://polyformproject.org/licenses/noncommercial/1.0.0" TextWrapping="Wrap" Foreground="#425466"/></StackPanel></Border></StackPanel></ScrollViewer></TabItem>
+        <TabItem Header="About"><ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="28" MaxWidth="920"><TextBlock Text="Federation Automation" FontSize="24" FontWeight="SemiBold" Margin="0,0,0,10"/><TextBlock Text="Federation Automation prepares model delivery sets by acquiring source files, optionally extracting IFC object data, optionally injecting metadata into IFC files, grouping models by naming rules or wildcard selections, building Navisworks NWD outputs, and optionally publishing the latest valid federation to Revizto." TextWrapping="Wrap" Foreground="#425466" Margin="0,0,0,12"/><TextBlock Text="Stages are connected by the configured working folders: source acquisition writes to SourceFolder, IFC processing can write to ProcessedFolder, data extraction exports CSV files to IfcDataExtractionFolder, and federation reads the selected input folder to create Output and Destination results. Each stage can be enabled, disabled, or forced from Settings, so the tool can run the whole pipeline or only the parts needed for a specific update." TextWrapping="Wrap" Foreground="#425466" Margin="0,0,0,18"/><Border Background="White" BorderBrush="#D5DCE3" BorderThickness="1" CornerRadius="4" Padding="16" Margin="0,0,0,14"><StackPanel><TextBlock Text="Manual and source" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8"/><TextBlock Text="Manual, templates, and source repository: https://github.com/Gudarzian/FederationAutomation" TextWrapping="Wrap" Foreground="#425466"/></StackPanel></Border><Border Background="White" BorderBrush="#D5DCE3" BorderThickness="1" CornerRadius="4" Padding="16" Margin="0,0,0,14"><StackPanel><TextBlock Text="Contact" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8"/><TextBlock Text="Goody Gudarzian" Margin="0,0,0,4"/><TextBlock Text="Email: gudarz@gmail.com" Margin="0,0,0,4"/><TextBlock Text="Phone: 0449707566"/></StackPanel></Border><Border Background="White" BorderBrush="#D5DCE3" BorderThickness="1" CornerRadius="4" Padding="16"><StackPanel><TextBlock Text="License and disclaimer" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8"/><TextBlock Text="Copyright (c) 2026 Gudarzian" TextWrapping="Wrap" Margin="0,0,0,8"/><TextBlock Text="Licensed under the PolyForm Noncommercial License 1.0.0. You may use, copy, modify, and share the software for noncommercial purposes under the license terms. Commercial use, including selling this software or using it as part of a paid service or product, requires separate permission from the copyright holder." TextWrapping="Wrap" Foreground="#425466" Margin="0,0,0,10"/><TextBlock Text="Personal project disclaimer" FontWeight="SemiBold" Foreground="#9A3412" Margin="0,0,0,5"/><TextBlock Text="This software is a personal project provided as-is, without warranties or guarantees of any kind. Use it carefully and cautiously, entirely at your own risk. The author accepts no responsibility or liability for loss, damage, data loss, interrupted workflows, or other consequences arising from its use. Always test with copies and maintain reliable backups." TextWrapping="Wrap" Foreground="#7C2D12" Margin="0,0,0,10"/><TextBlock Text="Full license terms: https://polyformproject.org/licenses/noncommercial/1.0.0" TextWrapping="Wrap" Foreground="#425466"/></StackPanel></Border></StackPanel></ScrollViewer></TabItem>
        </TabControl>
     </Grid>
   </DockPanel>
@@ -338,7 +338,7 @@ function Normalize-FEDAUTOGroupOrders {
 '@
 $reader = New-Object System.Xml.XmlNodeReader $xaml
 $window = [Windows.Markup.XamlReader]::Load($reader)
-foreach ($name in 'ConfigPathBox','OpenButton','NewButton','SaveButton','RunButton','ValidateButton','ReportIssueButton','ExportExcelButton','StatusText','ActivityBox','RunStageText','RunDetailText','RunProgressBar','MainTabs','RunTab','SettingsPanel','DownloadTab','AttributesTab','AttributesGrid','AttributesButtonsPanel','AttributesAddRowButton','AttributesMoveUpButton','AttributesMoveDownButton','AttributesDuplicateRowButton','AttributesDeleteRowButton','DataExtractionTab','DataExtractionRulesPanel','DataExtractionRulesText','DataExtractionRulesGrid','DataExtractionRulesButtonsPanel','DataExtractionAddRowButton','DataExtractionMoveUpButton','DataExtractionMoveDownButton','DataExtractionDuplicateRowButton','DataExtractionDeleteRowButton','DownloadStatusPanel','DownloadStatusText','PreviewMatchesButton','DownloadGrid','DownloadButtonsPanel','DownloadAddRowButton','DownloadMoveUpButton','DownloadMoveDownButton','DownloadDuplicateRowButton','DownloadDeleteRowButton','GroupingTab','GroupingPreviewPanel','GroupingPreviewText','PreviewGroupingButton','FederationGrid','WildcardSelectionGrid','WildcardSelectionButtonsPanel','WildcardAddRowButton','WildcardMoveUpButton','WildcardMoveDownButton','WildcardDuplicateRowButton','WildcardDeleteRowButton','GroupingOptionsPanel','LookupsGrid','LookupsTab') { Set-Variable -Name $name -Value $window.FindName($name) }
+foreach ($name in 'ConfigPathBox','OpenButton','NewButton','SaveButton','RunButton','CancelRunButton','ValidateButton','ReportIssueButton','ExportExcelButton','StatusText','ActivityBox','RunStageText','RunDetailText','RunProgressBar','MainTabs','RunTab','SettingsPanel','DownloadTab','AttributesTab','AttributesGrid','AttributesButtonsPanel','AttributesAddRowButton','AttributesMoveUpButton','AttributesMoveDownButton','AttributesDuplicateRowButton','AttributesDeleteRowButton','DataExtractionTab','DataExtractionRulesPanel','DataExtractionRulesText','DataExtractionRulesGrid','DataExtractionRulesButtonsPanel','DataExtractionAddRowButton','DataExtractionMoveUpButton','DataExtractionMoveDownButton','DataExtractionDuplicateRowButton','DataExtractionDeleteRowButton','DownloadStatusPanel','DownloadStatusText','PreviewMatchesButton','DownloadGrid','DownloadButtonsPanel','DownloadAddRowButton','DownloadMoveUpButton','DownloadMoveDownButton','DownloadDuplicateRowButton','DownloadDeleteRowButton','GroupingTab','GroupingPreviewPanel','GroupingPreviewText','PreviewGroupingButton','FederationGrid','WildcardSelectionGrid','WildcardSelectionButtonsPanel','WildcardAddRowButton','WildcardMoveUpButton','WildcardMoveDownButton','WildcardDuplicateRowButton','WildcardDeleteRowButton','GroupingOptionsPanel','LookupsGrid','LookupsTab') { Set-Variable -Name $name -Value $window.FindName($name) }
 
 function Invoke-FEDAUTOWhenUiIsIdle {
     param([Parameter(Mandatory = $true)][scriptblock]$Action)
@@ -771,7 +771,7 @@ function Update-FEDAUTOAttributesProcessingColumns {
 
 function Get-SettingControlType {
     param([string]$Parameter)
-    if ($Parameter -in @('RunDownload','IfcDataExtractionSkipIfCsvIsCurrent','IncludeUnmatchedFilesInFederatedModel','NavisworksVisible')) { return 'YesNo' }
+    if ($Parameter -in @('RunDownload','IfcDataExtractionSkipIfCsvIsCurrent','IncludeUnmatchedFilesInFederatedModel','ApplyNavisworksVisualStyle','NavisworksVisible')) { return 'YesNo' }
     if ($Parameter -in @('RunProcess','RunFederation','ReviztoPublish','SourceAcquisitionMode','NWDNamingMethod','NavisworksSavedNwdVersion')) { return 'Choice' }
     if ($Parameter -match '(Folder|Path)$' -or $Parameter -in @('SourceFolder','ProcessedFolder','LogFolder','FederationInputFolder','FederationOutputFolder')) { return 'Folder' }
     if ($Parameter -in @('NavisworksConfigXML','NavisworksViewsImportXML')) { return 'File' }
@@ -803,6 +803,7 @@ function Get-SettingHelpText {
         NavisworksConfigXML = 'Optional Navisworks XML options file used when creating federated models.'
         NavisworksSavedNwdVersion = 'NWD file version to save. Latest uses the running Navisworks version; older values require a Navisworks options XML so the hidden save-version setting can be patched.'
         NavisworksViewsImportXML = 'Optional XML file containing saved views to import into the final Navisworks model.'
+        ApplyNavisworksVisualStyle = 'Choose Yes to apply Full Render and the standard graduated background to saved Navisworks outputs.'
         NavisworksVisible = 'Choose Yes to show Navisworks while federation runs; No runs it in the background.'
         NWDNamingMethod = 'Controls names of grouped NWD files: Full, OnlyCodes, OnlyDesc, or Codes-Desc.'
         ReviztoPublish = 'Controls publishing the final federated model to Revizto. Force publishes when a valid model is available.'
@@ -2400,7 +2401,33 @@ function Enable-GridCheckboxSync {
         [Parameter(Mandatory = $true)]$Grid,
         [Parameter(Mandatory = $true)][string[]]$BooleanColumns
     )
-    $Grid.AddHandler([Windows.Controls.Primitives.ToggleButton]::ClickEvent, [Windows.RoutedEventHandler]{
+
+    $booleanColumnNames = @($BooleanColumns)
+    $previewMouseDownScript = {
+        param($sender, $eventArgs)
+        if ($eventArgs.ChangedButton -ne [Windows.Input.MouseButton]::Left) { return }
+
+        # DataGridCheckBoxColumn normally spends its first click entering edit
+        # mode. Toggle every configured checkbox column immediately.
+        $element = $eventArgs.OriginalSource
+        while ($element -and -not ($element -is [Windows.Controls.DataGridCell])) {
+            $element = [Windows.Media.VisualTreeHelper]::GetParent($element)
+        }
+        if (-not $element) { return }
+
+        $propertyName = $element.Column.SortMemberPath
+        if ([string]::IsNullOrWhiteSpace($propertyName) -or $booleanColumnNames -notcontains $propertyName) { return }
+
+        $row = $element.DataContext
+        if ($null -eq $row -or -not ($row.PSObject.Properties.Name -contains $propertyName)) { return }
+        $row.$propertyName = -not (ConvertTo-FEDAUTOBoolean $row.$propertyName)
+        $sender.Items.Refresh()
+        Set-FEDAUTOConfigurationDirty -Dirty:$true
+        $eventArgs.Handled = $true
+    }.GetNewClosure()
+    $Grid.AddHandler([Windows.Input.Mouse]::PreviewMouseDownEvent, [Windows.Input.MouseButtonEventHandler]$previewMouseDownScript, $true)
+
+    $checkboxClickScript = {
         param($sender, $eventArgs)
         $checkBox = $eventArgs.OriginalSource
         if (-not ($checkBox -is [Windows.Controls.CheckBox])) { return }
@@ -2415,7 +2442,8 @@ function Enable-GridCheckboxSync {
             $bindingExpression.UpdateSource()
             Set-FEDAUTOConfigurationDirty -Dirty:$true
         }
-    }, $true)
+    }.GetNewClosure()
+    $Grid.AddHandler([Windows.Controls.Primitives.ToggleButton]::ClickEvent, [Windows.RoutedEventHandler]$checkboxClickScript, $true)
 }
 
 $downloadFolderTemplate = [Windows.Markup.XamlReader]::Parse(@'
@@ -2574,44 +2602,6 @@ $DownloadGrid.AddHandler([Windows.Controls.Button]::ClickEvent, [Windows.RoutedE
     if ($selectedPath) { $row.ReadFolder = ConvertTo-FEDAUTOStoredPath $selectedPath; $DownloadGrid.Items.Refresh(); Set-FEDAUTOConfigurationDirty -Dirty:$true }
     $eventArgs.Handled = $true
 })
-$DownloadGrid.AddHandler([Windows.Input.Mouse]::PreviewMouseDownEvent, [Windows.Input.MouseButtonEventHandler]{
-    param($sender, $eventArgs)
-    if ($eventArgs.ChangedButton -ne [Windows.Input.MouseButton]::Left) { return }
-
-    # DataGridCheckBoxColumn normally spends its first click entering edit
-    # mode. Toggle the Download Enabled checkbox immediately.
-    $element = $eventArgs.OriginalSource
-    while ($element -and -not ($element -is [Windows.Controls.DataGridCell])) {
-        $element = [Windows.Media.VisualTreeHelper]::GetParent($element)
-    }
-    if (-not $element -or $element.Column.SortMemberPath -ne 'Run') { return }
-
-    $row = $element.DataContext
-    if ($null -eq $row -or -not ($row.PSObject.Properties.Name -contains 'Run')) { return }
-    $row.Run = -not (ConvertTo-FEDAUTOBoolean $row.Run)
-    $DownloadGrid.Items.Refresh()
-    Set-FEDAUTOConfigurationDirty -Dirty:$true
-    $eventArgs.Handled = $true
-}, $true)
-$WildcardSelectionGrid.AddHandler([Windows.Input.Mouse]::PreviewMouseDownEvent, [Windows.Input.MouseButtonEventHandler]{
-    param($sender, $eventArgs)
-    if ($eventArgs.ChangedButton -ne [Windows.Input.MouseButton]::Left) { return }
-
-    # DataGridCheckBoxColumn normally spends its first click entering edit
-    # mode. Toggle the Wildcard Selection Enabled checkbox immediately.
-    $element = $eventArgs.OriginalSource
-    while ($element -and -not ($element -is [Windows.Controls.DataGridCell])) {
-        $element = [Windows.Media.VisualTreeHelper]::GetParent($element)
-    }
-    if (-not $element -or $element.Column.SortMemberPath -ne 'Run') { return }
-
-    $row = $element.DataContext
-    if ($null -eq $row -or -not ($row.PSObject.Properties.Name -contains 'Run')) { return }
-    $row.Run = -not (ConvertTo-FEDAUTOBoolean $row.Run)
-    $WildcardSelectionGrid.Items.Refresh()
-    Set-FEDAUTOConfigurationDirty -Dirty:$true
-    $eventArgs.Handled = $true
-}, $true)
 $FederationGrid.AddHandler([Windows.Controls.Button]::ClickEvent, [Windows.RoutedEventHandler]{
     param($sender, $eventArgs)
     $button = $eventArgs.OriginalSource
@@ -2958,6 +2948,62 @@ function Add-FEDAUTOActivityLine {
     Update-FEDAUTORunStatusFromLine $Line
 }
 
+function Test-FEDAUTOBackgroundRunActive {
+    return ($script:activeBackgroundRun -and $script:activeBackgroundRun.Process -and -not $script:activeBackgroundRun.Process.HasExited)
+}
+
+function Stop-FEDAUTOProcessTree {
+    param([Parameter(Mandatory = $true)][int]$ProcessId)
+
+    $children = @()
+    try {
+        $children = @(Get-CimInstance Win32_Process -Filter "ParentProcessId=$ProcessId" -ErrorAction SilentlyContinue)
+    }
+    catch { }
+
+    foreach ($child in $children) {
+        Stop-FEDAUTOProcessTree -ProcessId ([int]$child.ProcessId)
+    }
+
+    try {
+        $process = Get-Process -Id $ProcessId -ErrorAction SilentlyContinue
+        if ($process -and -not $process.HasExited) {
+            Stop-Process -Id $ProcessId -Force -ErrorAction SilentlyContinue
+        }
+    }
+    catch { }
+}
+
+function Stop-FEDAUTOBackgroundRun {
+    param(
+        [Windows.Window]$Window,
+        [switch]$Prompt
+    )
+
+    if (-not (Test-FEDAUTOBackgroundRunActive)) { return $true }
+    if ($Prompt) {
+        $result = [Windows.MessageBox]::Show(
+            $Window,
+            'A pipeline run is still active. Cancel it now?',
+            'Cancel running pipeline',
+            [Windows.MessageBoxButton]::YesNo,
+            [Windows.MessageBoxImage]::Warning)
+        if ($result -ne [Windows.MessageBoxResult]::Yes) { return $false }
+    }
+
+    $script:runCancellationRequested = $true
+    $CancelRunButton.IsEnabled = $false
+    Add-FEDAUTOActivityLine 'Cancellation requested. Stopping pipeline and child processes...'
+    Set-FEDAUTORunStatus -Stage 'Cancelling' -Detail 'Stopping the pipeline and any child Navisworks processes.' -Progress ([int]$RunProgressBar.Value)
+    try {
+        Stop-FEDAUTOProcessTree -ProcessId ([int]$script:activeBackgroundRun.Process.Id)
+    }
+    catch {
+        Add-FEDAUTOActivityLine ("ERROR: Could not stop the running pipeline cleanly. {0}" -f $_.Exception.Message)
+    }
+    return $true
+}
+
 function Start-FEDAUTOBackgroundRun {
     param([string]$ConfigPath)
     $MainTabs.SelectedItem = $RunTab
@@ -2969,6 +3015,10 @@ function Start-FEDAUTOBackgroundRun {
     Add-FEDAUTOActivityLine ("Configuration: {0}" -f $ConfigPath)
     $StatusText.Text = 'Pipeline is running...'
     $RunButton.IsEnabled = $false
+    $ValidateButton.Visibility = [Windows.Visibility]::Collapsed
+    $CancelRunButton.Visibility = [Windows.Visibility]::Visible
+    $CancelRunButton.IsEnabled = $true
+    $script:runCancellationRequested = $false
 
     # The GUI distribution is paired with the compiled pipeline.  Do not invoke
     # the development .ps1 entry point here: it is not part of an EXE deployment.
@@ -2993,9 +3043,22 @@ function Start-FEDAUTOBackgroundRun {
             Add-FEDAUTORunSummary -ExitCode $exitCode
             $script:runOutputTimer.Stop()
             $RunButton.IsEnabled = $true
-            $StatusText.Text = if ($exitCode -eq 0) { 'Pipeline completed successfully.' } else { "Pipeline failed (exit code $exitCode)." }
-            if ($exitCode -eq 0) { Set-FEDAUTORunStatus -Stage 'Completed' -Detail 'The pipeline completed successfully.' -Progress 100 }
-            else { Set-FEDAUTORunStatus -Stage 'Run failed' -Detail "The pipeline ended with exit code $exitCode. Review the live activity log." -Progress ([int]$RunProgressBar.Value) }
+            $ValidateButton.Visibility = [Windows.Visibility]::Visible
+            $CancelRunButton.Visibility = [Windows.Visibility]::Collapsed
+            $CancelRunButton.IsEnabled = $false
+            if ($script:runCancellationRequested) {
+                $StatusText.Text = 'Pipeline cancelled.'
+                Set-FEDAUTORunStatus -Stage 'Cancelled' -Detail 'The pipeline was stopped by the user.' -Progress ([int]$RunProgressBar.Value)
+            }
+            elseif ($exitCode -eq 0) {
+                $StatusText.Text = 'Pipeline completed successfully.'
+                Set-FEDAUTORunStatus -Stage 'Completed' -Detail 'The pipeline completed successfully.' -Progress 100
+            }
+            else {
+                $StatusText.Text = "Pipeline failed (exit code $exitCode)."
+                Set-FEDAUTORunStatus -Stage 'Run failed' -Detail "The pipeline ended with exit code $exitCode. Review the live activity log." -Progress ([int]$RunProgressBar.Value)
+            }
+            $script:activeBackgroundRun = $null
         }
     })
     $script:runOutputTimer.Start()
@@ -3085,6 +3148,9 @@ $ReportIssueButton.Add_Click({
 $RunButton.Add_Click({
     param($sender, $eventArgs)
     try {
+        if (Test-FEDAUTOBackgroundRunActive) {
+            throw 'A pipeline run is already active.'
+        }
         $owner = [Windows.Window]::GetWindow($sender)
         $savedPath = Save-FEDAUTOConfiguration -Window $owner
         $report = Invoke-FEDAUTOConfigurationPreflight -Window $owner -CreateFolders
@@ -3094,7 +3160,17 @@ $RunButton.Add_Click({
         }
         Start-FEDAUTOBackgroundRun -ConfigPath $savedPath
     }
-    catch { $sender.IsEnabled = $true; [System.Windows.MessageBox]::Show($_.Exception.Message, 'Unable to start pipeline') }
+    catch {
+        $sender.IsEnabled = $true
+        $ValidateButton.Visibility = [Windows.Visibility]::Visible
+        $CancelRunButton.Visibility = [Windows.Visibility]::Collapsed
+        $CancelRunButton.IsEnabled = $false
+        [System.Windows.MessageBox]::Show($_.Exception.Message, 'Unable to start pipeline')
+    }
+})
+$CancelRunButton.Add_Click({
+    param($sender, $eventArgs)
+    [void](Stop-FEDAUTOBackgroundRun -Window ([Windows.Window]::GetWindow($sender)) -Prompt)
 })
 
 $previousState = Get-GuiState
@@ -3103,6 +3179,12 @@ $previousSessionCompleted = -not $previousState -or $previousState.LastSessionCo
 Save-GuiState -LastConfigFile $(if ($previousState) { $previousState.LastConfigFile } else { $null }) -LastSessionCompleted:$false
 $window.Add_Closing({
     param($sender, $eventArgs)
+    if (Test-FEDAUTOBackgroundRunActive) {
+        if (-not (Stop-FEDAUTOBackgroundRun -Window $sender -Prompt)) {
+            $eventArgs.Cancel = $true
+            return
+        }
+    }
     if (-not (Invoke-FEDAUTOUnsavedChangesPrompt -Window $sender)) {
         $eventArgs.Cancel = $true
         return
@@ -3115,8 +3197,3 @@ $startupConfig = if ($ConfigFile) { $ConfigFile } elseif ($previousSessionComple
 if ($startupConfig) { try { Set-EditorConfiguration (Get-PipelineConfiguration -ConfigPath $startupConfig -BasePath $basePath) $startupConfig } catch { [System.Windows.MessageBox]::Show(($_.Exception.Message + "`r`n`r`n" + $_.ScriptStackTrace), 'Unable to open configuration') } }
 elseif (-not $ConfigFile -and -not $previousSessionCompleted) { $StatusText.Text = 'Previous session did not close cleanly. Choose a configuration to continue.' }
 [void]$window.ShowDialog()
-
-
-
-
-

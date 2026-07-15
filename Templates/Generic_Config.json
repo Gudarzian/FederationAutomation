@@ -21,6 +21,7 @@
                      "NavisworksConfigXML":  "NavisworksOptions.xml",
                      "NavisworksSavedNwdVersion":  "Latest",
                      "NavisworksViewsImportXML":  null,
+                     "ApplyNavisworksVisualStyle":  "Yes",
                      "NavisworksVisible":  null,
                      "NWDNamingMethod":  "Full",
                      "ReviztoPublish":  "No",

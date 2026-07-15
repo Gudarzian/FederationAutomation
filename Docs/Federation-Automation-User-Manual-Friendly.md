@@ -1,6 +1,6 @@
 # Federation Automation User Manual (Friendly JSON/CSV Version)
 
-Version date: 2026-07-04  
+Version date: 2026-07-15  
 Applies to: `FA_GUI.exe`, `FA_Main.exe`, `Config.json`, and the PowerShell scripts in this JSON/CSV build
 
 This manual matches the current `NoExcel_JSON_CSV_Version` scripts. The important point is simple:
@@ -105,7 +105,9 @@ Use the GUI unless you are running the pipeline from a scheduled task or a scrip
 9. Click `Preflight` and fix any errors.
 10. Click `Save and Run`.
 
-The `Run` tab shows the active stage, progress bar, live activity, and a short run summary when the process finishes.
+The `Run` tab shows the active stage, progress bar, live activity, and a short run summary when the process finishes. While the pipeline is running, the GUI hides `Preflight` and shows `Cancel Run` in its place.
+
+Checkboxes in the GUI tables toggle with one click. This applies to all checkbox columns in the Download, Attributes, Data Extraction, Federation, and Wildcard Selection grids.
 
 ## 7. Running From PowerShell
 
@@ -223,11 +225,21 @@ The GUI can open JSON files where optional sections are missing, then writes the
 | `FederatedFileName` | Final naming-convention output name. Use `.nwf` only when the final output should be NWF; otherwise NWD is used. |
 | `NavisworksVersion` | Preferred Navisworks Manage year, such as `2026` or `2027`. Blank enables auto-detect. |
 | `NavisworksConfigXML` | Optional Navisworks options XML. Needed for older NWD save versions. |
-| Navisworks visual style | Every federation output is saved in `Full Render` style with a graduated background. This is enforced by the bundled Federation Automation Navisworks add-in. |
 | `NavisworksSavedNwdVersion` | `Latest`, `2027`, `2026`, or `2016-2025`. |
 | `NavisworksViewsImportXML` | Optional saved viewpoints XML, imported into the final naming-convention model only. |
+| `ApplyNavisworksVisualStyle` | `Yes` applies Full Render and the standard graduated background to saved Navisworks outputs. `No` leaves the visual style unenforced. |
 | `NavisworksVisible` | `Yes` shows Navisworks; `No` runs it in the background. |
 | `NWDNamingMethod` | `Full`, `OnlyCodes`, `OnlyDesc`, or `Codes-Desc` for grouped NWD names. |
+
+#### Full Render option
+
+`ApplyNavisworksVisualStyle` controls whether Federation Automation standardises the appearance saved inside the Navisworks outputs:
+
+- `Yes` loads the bundled Federation Automation Navisworks add-in, changes the active viewpoint to `Full Render`, applies the standard graduated background, and then saves the output. It is applied to each Navisworks output produced by either grouping method.
+- `No` disables this enforcement. Navisworks saves using the visual state provided by its current options, source model, or imported content.
+- If the setting is missing or blank, the pipeline treats it as `Yes`.
+
+When this option is enabled, the bundled visual-style add-in is required. If it cannot be found, federation is skipped and the run log explains that the application package must be rebuilt. `NavisworksVisible` only controls whether the Navisworks window is shown; it does not change whether Full Render is applied.
 
 ### Revizto Settings
 
@@ -243,7 +255,7 @@ The `Download` tab controls source acquisition.
 
 | Column | Meaning |
 | --- | --- |
-| `Run` | Whether this row is active. |
+| `Enabled` (`Run` in JSON) | Whether this row is active. |
 | `ReadFolder` | Local/synced folder or ProjectWise folder to search. |
 | `FileFilter` | Comma-separated wildcard filters, such as `*.ifc,*.nwc` or `*ARC*.ifc`. Blank means `*`. |
 | `Exclude` | Comma-separated terms or wildcard-style text removed after include matching. |
@@ -301,7 +313,7 @@ IFC data extraction is a reporting step. It does not modify model files.
 
 | Column | Meaning |
 | --- | --- |
-| `Run` | Whether the rule is active. |
+| `Enabled` (`Run` in JSON) | Whether the rule is active. |
 | `FileInclusions` | Comma-separated wildcard filters for IFC file names. Blank means the rule can include all IFC files. |
 | `FileExclusions` | Comma-separated wildcard filters for IFC file names to remove after file inclusions are applied. |
 | `TabInclusions` | Comma-separated wildcard filters for IFC property set or quantity set names. Blank includes every tab/source. |
@@ -399,7 +411,7 @@ Use `Wildcard Selection` when you want explicit ordered rules instead of naming-
 
 | Wildcard column | Meaning |
 | --- | --- |
-| `Run` | Whether the rule is active. |
+| `Enabled` (`Run` in JSON) | Whether the rule is active. |
 | `Inclusions` | Comma-separated wildcard filters. Required for an active rule. |
 | `Exclusions` | Comma-separated wildcard filters to remove from the matched set. |
 | `ExportFileName` | Output Navisworks file name. Use `.nwf` for NWF; otherwise NWD is used. |
@@ -434,7 +446,7 @@ Example:
 
 If lookup rows are missing or do not match, the process still runs, but descriptions may show as `N/A` or output names may fall back to codes.
 
-## 18. Preflight, Preview, and Issue Reports
+## 18. Preflight, Preview, Cancellation, and Issue Reports
 
 The GUI has several checks that are worth using before a long run.
 
@@ -445,8 +457,20 @@ The GUI has several checks that are worth using before a long run.
 | `Preflight` | Saves the JSON, checks folders, runtime files, Navisworks, Python, ProjectWise commands, disk space, and grid validation. |
 | `Report Issue` | Creates a support zip under `%LOCALAPPDATA%\Federation-Automation\IssueReports` and asks you to email it to `gudarz@gmail.com`. |
 | `Save and Run` | Saves JSON, runs preflight with folder creation, then starts `FA_Main.exe`. |
+| `Cancel Run` | Appears only while the pipeline is active. After confirmation, it stops `FA_Main.exe` and its child processes, including a Navisworks process started by that run. |
 
 `Save and Run` will stop before the pipeline starts if preflight finds errors.
+
+### Cancelling a GUI run
+
+1. Click `Cancel Run` while the pipeline is active.
+2. Confirm the cancellation when prompted. Choose `No` to let the run continue.
+3. The button is disabled while the GUI stops the pipeline and child processes.
+4. The Run dashboard changes to `Cancelled` when the process has stopped. `Cancel Run` is then hidden and `Preflight` returns.
+
+Closing the GUI during an active run shows the same cancellation prompt. If you decline, the GUI remains open and the run continues.
+
+Cancellation stops current processing but does not roll back work already completed. Files copied, processed, or saved before cancellation can remain in their output folders. Review the live activity and output folders before starting the next run.
 
 Every compiled EXE has a build version in `yyyyMMdd-index` format. The main pipeline writes its build version near the start and end of the log; include that value when reporting an issue.
 
@@ -585,6 +609,12 @@ These are not blockers, but they explain some wording you may see:
 Federation Automation is licensed under the PolyForm Noncommercial License 1.0.0.
 
 You may use, copy, modify, and share the software for noncommercial purposes under the license terms. Commercial use, including selling the software or using it as part of a paid service or product, requires separate permission from the copyright holder.
+
+### Personal project disclaimer
+
+Federation Automation is a personal project provided as-is, without warranties or guarantees of any kind. Use it carefully and cautiously, entirely at your own risk. The author accepts no responsibility or liability for loss, damage, data loss, interrupted workflows, or other consequences arising from its use.
+
+Always test the software with copies of your files in a safe environment before using it on project data, and maintain reliable backups of configurations, source models, and outputs.
 
 Full terms:
 

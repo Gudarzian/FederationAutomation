@@ -59,6 +59,7 @@ function Get-FEDAUTOSettingsCatalog {
         @('Federation & Navisworks','NavisworksConfigXML','NavisworksOptions.xml','Optional Navisworks XML options file.'),
         @('Federation & Navisworks','NavisworksSavedNwdVersion','Latest','NWD file version to write. Latest uses the running Navisworks version.'),
         @('Federation & Navisworks','NavisworksViewsImportXML','','Optional XML file of saved views to import.'),
+        @('Federation & Navisworks','ApplyNavisworksVisualStyle','Yes','Applies Full Render and the standard graduated background to saved Navisworks outputs.'),
         @('Federation & Navisworks','NavisworksVisible','No','Yes shows Navisworks while federation runs; No runs it in the background.'),
         @('Federation & Navisworks','NWDNamingMethod','Full','Naming for grouped NWD files: Full, OnlyCodes, OnlyDesc, or Codes-Desc.'),
         @('Revizto publishing','ReviztoPublish','No','Yes allows publish; No disables it; Force publishes when a valid model is available.'),

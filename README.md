@@ -30,5 +30,7 @@ Copyright (c) 2026 Gudarzian
 
 This software is licensed under the PolyForm Noncommercial License 1.0.0. Noncommercial use, copying, modification, and sharing are allowed under the license terms. Commercial use, including selling this software or using it as part of a paid service or product, requires separate permission from the copyright holder.
 
+This is a personal project provided as-is, without warranties or guarantees. Use it carefully and cautiously, entirely at your own risk. The author accepts no responsibility or liability for loss, damage, data loss, interrupted workflows, or other consequences arising from its use. Test with copies and maintain reliable backups.
+
 Full terms:
 https://polyformproject.org/licenses/noncommercial/1.0.0
