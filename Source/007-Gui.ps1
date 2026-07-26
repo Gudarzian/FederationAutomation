@@ -134,12 +134,12 @@ function Get-FEDAUTOApplicationBasePath {
         $assembly = [Reflection.Assembly]::GetEntryAssembly()
         if ($assembly -and -not [string]::IsNullOrWhiteSpace($assembly.Location)) { [void]$candidatePaths.Add($assembly.Location) }
     }
-    catch { }
+    catch { Write-Verbose "Entry assembly location was unavailable while resolving the application base path. $($_.Exception.Message)" }
     try {
         $processPath = [Diagnostics.Process]::GetCurrentProcess().MainModule.FileName
         if (-not [string]::IsNullOrWhiteSpace($processPath)) { [void]$candidatePaths.Add($processPath) }
     }
-    catch { }
+    catch { Write-Verbose "Current process path was unavailable while resolving the application base path. $($_.Exception.Message)" }
 
     foreach ($candidatePath in $candidatePaths) {
         try {
@@ -148,7 +148,7 @@ function Get-FEDAUTOApplicationBasePath {
                 if ($hostProcessNames -notcontains $processName) { return (Split-Path -Parent $candidatePath) }
             }
         }
-        catch { }
+        catch { Write-Verbose "Could not inspect application-base candidate '$candidatePath'. $($_.Exception.Message)" }
     }
 
     if ($PSCommandPath) { return (Split-Path -Parent $PSCommandPath) }
@@ -167,7 +167,7 @@ function Remove-FEDAUTOStaleTemporaryFiles {
             Where-Object { $_.Name -match '^CSC[0-9A-F]+\.TMP$' } |
             Remove-Item -Force -ErrorAction SilentlyContinue
     }
-    catch { }
+    catch { Write-Verbose "Could not remove stale compiler temporary files from '$basePath'. $($_.Exception.Message)" }
 }
 Remove-FEDAUTOStaleTemporaryFiles
 
@@ -176,7 +176,10 @@ function Get-GuiState {
     try {
         return (Get-Content -LiteralPath $guiStatePath -Raw | ConvertFrom-Json)
     }
-    catch { return $null }
+    catch {
+        Write-Warning "Could not read GUI session state '$guiStatePath'. Starting with a new session. $($_.Exception.Message)"
+        return $null
+    }
 }
 
 function Save-GuiState {
@@ -324,7 +327,7 @@ function Normalize-FEDAUTOGroupOrders {
     <Grid Margin="24"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
       <Grid Grid.Row="0" Margin="0,0,0,16"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBox Name="ConfigPathBox" FontSize="15" Padding="10" VerticalContentAlignment="Center"/><Button Name="OpenButton" Grid.Column="1" Content="Open..." Padding="18,8" Margin="10,0,0,0"/><Button Name="NewButton" Grid.Column="2" Content="New JSON" Padding="18,8" Margin="10,0,0,0"/></Grid>
       <TabControl Grid.Row="1" Name="MainTabs"><TabItem Header="Settings"><ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Name="SettingsPanel" Margin="20"/></ScrollViewer></TabItem>
-        <TabItem Name="DownloadTab" Header="Download"><DockPanel Margin="10"><Border Name="DownloadStatusPanel" DockPanel.Dock="Top" Background="#D9E8F5" Padding="10,7" Margin="0,0,0,10" CornerRadius="3"><DockPanel><Button Name="PreviewMatchesButton" DockPanel.Dock="Right" Content="Preview Matches" Padding="12,4" Margin="10,0,0,0"/><TextBlock Name="DownloadStatusText" TextWrapping="Wrap" VerticalAlignment="Center"/></DockPanel></Border><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><DataGrid Name="DownloadGrid" Grid.Column="0" AutoGenerateColumns="True" CanUserAddRows="False" CanUserDeleteRows="True" EnableRowVirtualization="False" VirtualizingPanel.IsVirtualizing="False" ClipboardCopyMode="None"/><StackPanel Name="DownloadButtonsPanel" Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Top"><Button Name="DownloadAddRowButton" Content="+" ToolTip="Add download rule" Width="32" Height="28" Margin="0,0,0,6" FontWeight="Bold"/><Button Name="DownloadMoveUpButton" Content="&#x25B2;" ToolTip="Move selected download rule up" Width="32" Height="28" Margin="0,0,0,6"/><Button Name="DownloadMoveDownButton" Content="&#x25BC;" ToolTip="Move selected download rule down" Width="32" Height="28" Margin="0,0,0,6"/><Button Name="DownloadDuplicateRowButton" Content="D" ToolTip="Duplicate selected download rule" Width="32" Height="28" Margin="0,0,0,6" FontWeight="Bold"/><Button Name="DownloadDeleteRowButton" Content="X" ToolTip="Delete selected download rule" Width="32" Height="28" Foreground="#B91C1C" FontWeight="Bold"/></StackPanel></Grid></DockPanel></TabItem>
+        <TabItem Name="DownloadTab" Header="Download"><DockPanel Margin="10"><Border Name="DownloadStatusPanel" DockPanel.Dock="Top" Background="#D9E8F5" Padding="10,7" Margin="0,0,0,10" CornerRadius="3"><DockPanel><Button Name="PreviewMatchesButton" DockPanel.Dock="Right" Content="Preview Matches" Padding="12,4" Margin="10,0,0,0"/><TextBlock Name="DownloadStatusText" TextWrapping="Wrap" VerticalAlignment="Center"/></DockPanel></Border><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><DataGrid Name="DownloadGrid" Grid.Column="0" AutoGenerateColumns="True" CanUserAddRows="False" CanUserDeleteRows="True" EnableRowVirtualization="False" VirtualizingPanel.IsVirtualizing="False" ClipboardCopyMode="None" ColumnHeaderHeight="36"/><StackPanel Name="DownloadButtonsPanel" Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Top"><Button Name="DownloadAddRowButton" Content="+" ToolTip="Add download rule" Width="32" Height="28" Margin="0,0,0,6" FontWeight="Bold"/><Button Name="DownloadMoveUpButton" Content="&#x25B2;" ToolTip="Move selected download rule up" Width="32" Height="28" Margin="0,0,0,6"/><Button Name="DownloadMoveDownButton" Content="&#x25BC;" ToolTip="Move selected download rule down" Width="32" Height="28" Margin="0,0,0,6"/><Button Name="DownloadDuplicateRowButton" Content="D" ToolTip="Duplicate selected download rule" Width="32" Height="28" Margin="0,0,0,6" FontWeight="Bold"/><Button Name="DownloadDeleteRowButton" Content="X" ToolTip="Delete selected download rule" Width="32" Height="28" Foreground="#B91C1C" FontWeight="Bold"/></StackPanel></Grid></DockPanel></TabItem>
         <TabItem Name="AttributesTab" Header="Attributes"><Grid Margin="10"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><DataGrid Name="AttributesGrid" Grid.Column="0" AutoGenerateColumns="True" CanUserAddRows="False" CanUserDeleteRows="True" EnableRowVirtualization="False" VirtualizingPanel.IsVirtualizing="False" ClipboardCopyMode="ExcludeHeader"/><StackPanel Name="AttributesButtonsPanel" Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Top"><Button Name="AttributesAddRowButton" Content="+" ToolTip="Add attribute row" Width="32" Height="28" Margin="0,0,0,6" FontWeight="Bold"/><Button Name="AttributesMoveUpButton" Content="&#x25B2;" ToolTip="Move selected attribute row up" Width="32" Height="28" Margin="0,0,0,6"/><Button Name="AttributesMoveDownButton" Content="&#x25BC;" ToolTip="Move selected attribute row down" Width="32" Height="28" Margin="0,0,0,6"/><Button Name="AttributesDuplicateRowButton" Content="D" ToolTip="Duplicate selected attribute row" Width="32" Height="28" Margin="0,0,0,6" FontWeight="Bold"/><Button Name="AttributesDeleteRowButton" Content="X" ToolTip="Delete selected attribute row" Width="32" Height="28" Foreground="#B91C1C" FontWeight="Bold"/></StackPanel></Grid></TabItem>
         <TabItem Name="DataExtractionTab" Header="Data Extraction"><DockPanel Margin="10"><Border Name="DataExtractionRulesPanel" DockPanel.Dock="Top" Background="#D8F3DC" Padding="10,7" Margin="0,0,0,10" CornerRadius="3"><TextBlock Name="DataExtractionRulesText" Text="Select IFC files, tabs, and attributes for object data extraction. The first enabled rule matching a file is used; if no enabled rules exist, every IFC and all available attributes are extracted." TextWrapping="Wrap" VerticalAlignment="Center"/></Border><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><DataGrid Name="DataExtractionRulesGrid" Grid.Column="0" AutoGenerateColumns="True" CanUserAddRows="False" CanUserDeleteRows="True" EnableRowVirtualization="False" VirtualizingPanel.IsVirtualizing="False" ClipboardCopyMode="ExcludeHeader"/><StackPanel Name="DataExtractionRulesButtonsPanel" Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Top"><Button Name="DataExtractionAddRowButton" Content="+" ToolTip="Add data extraction rule" Width="32" Height="28" Margin="0,0,0,6" FontWeight="Bold"/><Button Name="DataExtractionMoveUpButton" Content="&#x25B2;" ToolTip="Move selected rule up" Width="32" Height="28" Margin="0,0,0,6"/><Button Name="DataExtractionMoveDownButton" Content="&#x25BC;" ToolTip="Move selected rule down" Width="32" Height="28" Margin="0,0,0,6"/><Button Name="DataExtractionDuplicateRowButton" Content="D" ToolTip="Duplicate selected rule" Width="32" Height="28" Margin="0,0,0,6" FontWeight="Bold"/><Button Name="DataExtractionDeleteRowButton" Content="X" ToolTip="Delete selected rule" Width="32" Height="28" Foreground="#B91C1C" FontWeight="Bold"/></StackPanel></Grid></DockPanel></TabItem>
         <TabItem Name="GroupingTab" Header="Grouping"><DockPanel Margin="10"><Border Name="GroupingPreviewPanel" DockPanel.Dock="Top" Background="#DFF0C8" Padding="10,7" Margin="0,0,0,10" CornerRadius="3"><DockPanel><Button Name="PreviewGroupingButton" DockPanel.Dock="Right" Content="Preview Grouping" Padding="12,4" Margin="10,0,0,0"/><TextBlock Name="GroupingPreviewText" Text="Preview how source files will be grouped and federated before running Navisworks." TextWrapping="Wrap" VerticalAlignment="Center"/></DockPanel></Border><StackPanel Name="GroupingOptionsPanel" DockPanel.Dock="Top" Margin="0,0,0,10"/><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><DataGrid Name="WildcardSelectionGrid" Grid.Column="0" Visibility="Collapsed" AutoGenerateColumns="True" CanUserAddRows="False" CanUserDeleteRows="True" EnableRowVirtualization="False" VirtualizingPanel.IsVirtualizing="False" ClipboardCopyMode="ExcludeHeader"/><DataGrid Name="FederationGrid" Grid.Column="0" AutoGenerateColumns="True" CanUserAddRows="True" CanUserDeleteRows="True" EnableRowVirtualization="False" VirtualizingPanel.IsVirtualizing="False" ClipboardCopyMode="ExcludeHeader"/><StackPanel Name="WildcardSelectionButtonsPanel" Grid.Column="1" Visibility="Collapsed" Margin="8,0,0,0" VerticalAlignment="Top"><Button Name="WildcardAddRowButton" Content="+" ToolTip="Add wildcard rule" Width="32" Height="28" Margin="0,0,0,6" FontWeight="Bold"/><Button Name="WildcardMoveUpButton" Content="&#x25B2;" ToolTip="Move selected wildcard rule up" Width="32" Height="28" Margin="0,0,0,6"/><Button Name="WildcardMoveDownButton" Content="&#x25BC;" ToolTip="Move selected wildcard rule down" Width="32" Height="28" Margin="0,0,0,6"/><Button Name="WildcardDuplicateRowButton" Content="D" ToolTip="Duplicate selected wildcard rule" Width="32" Height="28" Margin="0,0,0,6" FontWeight="Bold"/><Button Name="WildcardDeleteRowButton" Content="X" ToolTip="Delete selected wildcard rule" Width="32" Height="28" Foreground="#B91C1C" FontWeight="Bold"/></StackPanel></Grid></DockPanel></TabItem>
@@ -360,8 +363,8 @@ function Get-FEDAUTOColumnDisplayName {
         ReadFolder = 'Source folder'
         FileFilter = 'Include filters'
         Exclude = 'Exclude terms'
-        SkipIfSame = 'Skip same'
-        CheckDateToo = 'Compare date'
+        SkipIfSame = "Skip`nsame"
+        CheckDateToo = "Compare`ndate"
         MinState = 'Min state'
         AttributeName = 'Source attribute'
         OutputName = 'Output name'
@@ -395,8 +398,8 @@ function Get-FEDAUTOColumnHelpText {
         ReadFolder = 'Source folder or ProjectWise path to search. Local and synchronised folders are not searched recursively.'
         FileFilter = 'Include wildcard filters. Use * and ?. Separate multiple filters with commas, for example *ARC*.ifc,*CEW*.nwc.'
         Exclude = 'Comma-separated terms or wildcard patterns removed after include filters are applied.'
-        SkipIfSame = 'When enabled, files already staged with the same size are not copied or downloaded again.'
-        CheckDateToo = 'When Skip same is enabled, also compare the source modified date.'
+        SkipIfSame = 'When enabled, a file is skipped only when it passes the selected comparison. When disabled, the source file is always copied or downloaded.'
+        CheckDateToo = 'When Skip same is enabled, require both the source size and modified date to match. When disabled, only the size must match.'
         MinState = 'Reserved for future workflow-state filtering. Currently ignored by the download module.'
         AttributeName = 'Source ProjectWise field or document property to export or inject.'
         OutputName = 'Column or IFC property name to write. Blank uses the source attribute name.'
@@ -428,7 +431,12 @@ function New-FEDAUTOColumnHeader {
     $label = Get-FEDAUTOColumnDisplayName -PropertyName $PropertyName
     $help = Get-FEDAUTOColumnHelpText -PropertyName $PropertyName
     if ([string]::IsNullOrWhiteSpace($help)) { return $label }
-    return New-Object Windows.Controls.TextBlock -Property @{ Text = $label; ToolTip = $help }
+    $headerProperties = @{ Text = $label; ToolTip = $help; VerticalAlignment = 'Center' }
+    if ($label -match "`n") {
+        $headerProperties.TextAlignment = 'Center'
+        $headerProperties.TextWrapping = 'NoWrap'
+    }
+    return New-Object Windows.Controls.TextBlock -Property $headerProperties
 }
 
 function Set-FEDAUTOColumnPresentation {
@@ -441,12 +449,12 @@ function Set-FEDAUTOColumnPresentation {
     $Column.Header = New-FEDAUTOColumnHeader -PropertyName $PropertyName
 
     switch ($PropertyName) {
-        'Run' { $Column.MinWidth = 46; $Column.Width = [Windows.Controls.DataGridLength]::new(52) }
+        'Run' { $Column.MinWidth = 62; $Column.Width = [Windows.Controls.DataGridLength]::new(62) }
         'ReadFolder' { $Column.MinWidth = 360; $Column.Width = [Windows.Controls.DataGridLength]::new(1, [Windows.Controls.DataGridLengthUnitType]::Star) }
         'FileFilter' { $Column.MinWidth = 210; $Column.Width = [Windows.Controls.DataGridLength]::new(240) }
         'Exclude' { $Column.MinWidth = 170; $Column.Width = [Windows.Controls.DataGridLength]::new(200) }
-        'SkipIfSame' { $Column.MinWidth = 46; $Column.Width = [Windows.Controls.DataGridLength]::new(52) }
-        'CheckDateToo' { $Column.MinWidth = 46; $Column.Width = [Windows.Controls.DataGridLength]::new(52) }
+        'SkipIfSame' { $Column.MinWidth = 66; $Column.Width = [Windows.Controls.DataGridLength]::new(66) }
+        'CheckDateToo' { $Column.MinWidth = 74; $Column.Width = [Windows.Controls.DataGridLength]::new(74) }
         'MinState' { $Column.MinWidth = 90; $Column.Width = [Windows.Controls.DataGridLength]::new(100) }
         'AttributeName' { $Column.MinWidth = 240; $Column.Width = [Windows.Controls.DataGridLength]::new(280) }
         'OutputName' { $Column.MinWidth = 200; $Column.Width = [Windows.Controls.DataGridLength]::new(240) }
@@ -485,7 +493,7 @@ function Get-FEDAUTOConfigDisplayName {
         $name = [IO.Path]::GetFileName($path)
         if (-not [string]::IsNullOrWhiteSpace($name)) { return $name }
     }
-    catch {}
+    catch { Write-Verbose "Could not determine a display name for configuration path '$path'. $($_.Exception.Message)" }
     return $path
 }
 
@@ -771,8 +779,9 @@ function Update-FEDAUTOAttributesProcessingColumns {
 
 function Get-SettingControlType {
     param([string]$Parameter)
+    if ($Parameter -eq 'ExcludeMissingSourceFiles') { return 'Checkbox' }
     if ($Parameter -in @('RunDownload','IfcDataExtractionSkipIfCsvIsCurrent','IncludeUnmatchedFilesInFederatedModel','ApplyNavisworksVisualStyle','NavisworksVisible')) { return 'YesNo' }
-    if ($Parameter -in @('RunProcess','RunFederation','ReviztoPublish','SourceAcquisitionMode','NWDNamingMethod','NavisworksSavedNwdVersion')) { return 'Choice' }
+    if ($Parameter -in @('RunProcess','RunFederation','ReviztoPublish','SourceAcquisitionMode','MissingSourceFileAction','IfcDataExtractionFailurePolicy','NWDNamingMethod','NavisworksSavedNwdVersion')) { return 'Choice' }
     if ($Parameter -match '(Folder|Path)$' -or $Parameter -in @('SourceFolder','ProcessedFolder','LogFolder','FederationInputFolder','FederationOutputFolder')) { return 'Folder' }
     if ($Parameter -in @('NavisworksConfigXML','NavisworksViewsImportXML')) { return 'File' }
     return 'Text'
@@ -787,12 +796,19 @@ function Get-SettingHelpText {
         LogFolder = 'Folder where run logs are written. A relative path is based on the application folder.'
         SourceFolder = 'Folder where downloaded or copied source model files are staged before processing.'
         AttributesFile = 'CSV file, stored under SourceFolder, that contains the captured source metadata used during IFC processing.'
+        MissingSourceFileAction = 'Controls how a source file that was previously acquired by this tool is handled when it is absent from a complete, successful source inventory. Do nothing is the default; Rename keeps it in place with a suffix; Relocate moves it to the deleted folder.'
+        MissingSourceFileSuffix = 'Text inserted immediately before the file extension when a missing source file is renamed. Example: Model.ifc becomes Model_MISSING.ifc. When relocating, the deleted folder beside SourceFolder is used and this value is ignored.'
+        ExcludeMissingSourceFiles = 'When selected, files whose base name ends with MissingSourceFileSuffix are excluded from IFC data extraction and federation. Clear it to include those files.'
         RunProcess = 'Controls IFC metadata processing. Yes runs when needed, No skips it, and Force reprocesses all applicable IFC files.'
         ProcessedFolder = 'Folder where IFC files with injected attributes and process summaries are written.'
         RunIfcDataExtraction = 'Controls IFC data extraction. Yes exports object attributes to CSV files during the main automation run.'
         IfcDataExtractionFolder = 'Folder where IFC object attribute CSV files are exported. Blank uses IFCDataExtraction under the application folder.'
         IfcDataExtractionMaxFileSizeMB = 'Maximum IFC file size to extract, in MB. Larger IFC files are skipped with a warning to avoid very long runs.'
         IfcDataExtractionSkipIfCsvIsCurrent = 'When Yes, extraction skips IFC files whose existing CSV is newer than or the same age as the IFC. Force extraction ignores this check.'
+        IfcDataExtractionStallWarningMinutes = 'Minutes without a worker heartbeat before a warning is logged. Busy workers continue running.'
+        IfcDataExtractionStallTimeoutMinutes = 'Minutes without a worker heartbeat before a worker may be stopped, but only after sustained negligible CPU and disk I/O activity.'
+        IfcDataExtractionFailurePolicy = 'Continue records failed IFC extractions and continues the pipeline. FailPipeline stops after the extraction stage reports any failed IFC.'
+        IfcOpenShellVersion = 'Pinned IfcOpenShell version used for IFC extraction and metadata writing. Change only after validating the new version against representative IFC files.'
         RunFederation = 'Controls Navisworks federation. Yes runs only when changes require it, No disables it, and Force always rebuilds the federation.'
         IncludeUnmatchedFilesInFederatedModel = 'Choose Yes to add models that do not match the federation naming rules to the final federated NWD.'
         FederationInputFolder = 'Folder used as the source for federation. Leave blank to let the pipeline choose ProcessedFolder or SourceFolder automatically.'
@@ -823,7 +839,7 @@ function ConvertTo-FEDAUTOStoredPath {
         $rootPath = ([IO.Path]::GetFullPath($basePath)).TrimEnd('\')
         if ($fullPath.StartsWith($rootPath + '\', [StringComparison]::OrdinalIgnoreCase)) { return $fullPath.Substring($rootPath.Length + 1) }
     }
-    catch { }
+    catch { Write-Verbose "Could not convert '$Path' to a path relative to the application folder. $($_.Exception.Message)" }
     return $Path
 }
 
@@ -1589,11 +1605,39 @@ function Show-FEDAUTODownloadMatchPreview {
     $sourceMode = Get-FEDAUTOSettingValueFromRows -Rows $settingsRows -Parameter 'SourceAcquisitionMode' -DefaultValue 'Auto'
     $sourceModeNormalized = $sourceMode.Trim().ToLowerInvariant()
     if ($sourceModeNormalized -notin @('auto','local','projectwise')) { $sourceModeNormalized = 'auto' }
+    $downloadFolder = Resolve-RelativePath -PathValue (CureFolderPath (Get-FEDAUTOSettingValueFromRows -Rows $settingsRows -Parameter 'SourceFolder' -DefaultValue 'SourceFiles')) -Root $basePath
+
+    function Get-FEDAUTODownloadPreviewDestinationStatus {
+        param([Parameter(Mandatory = $true)][System.IO.FileInfo]$SourceFile, [Parameter(Mandatory = $true)]$DownloadRow)
+
+        $destination = Join-Path $downloadFolder $SourceFile.Name
+        if (-not (Test-Path -LiteralPath $destination -PathType Leaf)) {
+            return 'Missing in download folder — will copy/download.'
+        }
+
+        $existing = Get-Item -LiteralPath $destination -ErrorAction Stop
+        $existingText = ('Available: {0:n0} bytes, {1}' -f $existing.Length, $existing.LastWriteTime.ToString('yyyy-MM-dd HH:mm'))
+        $skipIfSame = -not ($DownloadRow.PSObject.Properties.Name -contains 'SkipIfSame') -or (Test-FEDAUTOYesLike -Value $DownloadRow.SkipIfSame)
+        $checkDateToo = $DownloadRow.PSObject.Properties.Name -contains 'CheckDateToo' -and (Test-FEDAUTOYesLike -Value $DownloadRow.CheckDateToo)
+        if (-not $skipIfSame) {
+            return "$existingText — will overwrite (SkipIfSame is disabled)."
+        }
+
+        $sameSize = $existing.Length -eq $SourceFile.Length
+        $sameDate = $existing.LastWriteTimeUtc -eq $SourceFile.LastWriteTimeUtc
+        if ($sameSize -and (-not $checkDateToo -or $sameDate)) {
+            $sameCheck = if ($checkDateToo) { 'same size and date' } else { 'same size' }
+            return "$existingText — will not overwrite ($sameCheck)."
+        }
+        $difference = if ($sameSize) { 'date differs' } else { 'size differs' }
+        return "$existingText — will overwrite ($difference)."
+    }
 
     $lines = New-Object System.Collections.Generic.List[string]
     $lines.Add("Download match preview") | Out-Null
     $lines.Add(("Configuration: {0}" -f $ConfigPathBox.Text)) | Out-Null
     $lines.Add(("Source acquisition: {0}; Mode: {1}" -f $runDownload, $sourceMode)) | Out-Null
+    $lines.Add(("Download folder: {0}" -f $downloadFolder)) | Out-Null
     $lines.Add(("Generated: {0}" -f (Get-Date).ToString('yyyy-MM-dd HH:mm:ss'))) | Out-Null
     $lines.Add('') | Out-Null
 
@@ -1675,7 +1719,8 @@ function Show-FEDAUTODownloadMatchPreview {
         }
         else {
             foreach ($file in @($matches | Select-Object -First 100)) {
-                $lines.Add(("    {0}  ({1:n0} bytes, {2})" -f $file.Name, $file.Length, $file.LastWriteTime.ToString('yyyy-MM-dd HH:mm'))) | Out-Null
+                $destinationStatus = Get-FEDAUTODownloadPreviewDestinationStatus -SourceFile $file -DownloadRow $row
+                $lines.Add(("    {0}  ({1:n0} bytes, {2}) — {3}" -f $file.Name, $file.Length, $file.LastWriteTime.ToString('yyyy-MM-dd HH:mm'), $destinationStatus)) | Out-Null
             }
             if ($matches.Count -gt 100) {
                 $lines.Add(("    ... {0} more file(s)" -f ($matches.Count - 100))) | Out-Null
@@ -1801,22 +1846,25 @@ function Get-FEDAUTOFederationFolders {
 }
 
 function Get-FEDAUTOFederationCandidateFiles {
-    param([string]$Path, [string[]]$ExplicitNwdNames = @())
+    param([string]$Path, [string[]]$ExplicitNwdNames = @(), [string]$MissingSourceFileSuffix, [switch]$ExcludeMissingSourceFiles)
     if (-not (Test-Path -LiteralPath $Path -PathType Container)) { return @() }
     $allFiles = @(Get-ChildItem -LiteralPath $Path -File -ErrorAction Stop)
     $extensions = @(Get-FederatableModelExtensions | ForEach-Object { $_.ToLowerInvariant() })
-    $sourceNames = @($allFiles | Where-Object { $_.Extension.ToLowerInvariant() -in @('.ifc','.dwg','.dgn','.rvt') } | Select-Object -ExpandProperty Name)
+    $sourceNames = @($allFiles | Where-Object { $_.Extension.ToLowerInvariant() -in @('.ifc','.rvt') } | Select-Object -ExpandProperty Name)
     $candidates = @($allFiles | Where-Object {
         $ext = $_.Extension.ToLowerInvariant()
         ($extensions -contains $ext) -and -not ($ext -eq '.nwc' -and (Test-GeneratedNwcForSourceNames -NwcName $_.Name -SourceNames $sourceNames))
     })
+    if ($ExcludeMissingSourceFiles -and -not [string]::IsNullOrWhiteSpace($MissingSourceFileSuffix)) {
+        $candidates = @($candidates | Where-Object { -not $_.BaseName.EndsWith($MissingSourceFileSuffix, [StringComparison]::OrdinalIgnoreCase) })
+    }
     # NWDs are included only when a filter names the exact file, rather than
     # allowing broad wildcards to pull every existing federation into a rule.
     $explicitNames = @($ExplicitNwdNames | Where-Object {
         $_ -and $_ -notmatch '[*?]' -and $_.EndsWith('.nwd', [StringComparison]::OrdinalIgnoreCase)
     })
     if ($explicitNames.Count -gt 0) {
-        $candidates += @($allFiles | Where-Object { $_.Extension -ieq '.nwd' -and $explicitNames -contains $_.Name })
+        $candidates += @($allFiles | Where-Object { $_.Extension -ieq '.nwd' -and $explicitNames -contains $_.Name -and (-not $ExcludeMissingSourceFiles -or [string]::IsNullOrWhiteSpace($MissingSourceFileSuffix) -or -not $_.BaseName.EndsWith($MissingSourceFileSuffix, [StringComparison]::OrdinalIgnoreCase)) })
     }
     return @($candidates | Sort-Object FullName -Unique)
 }
@@ -1879,6 +1927,10 @@ function Show-FEDAUTOGroupingPreview {
     $wildcardRows = Get-FEDAUTOEditorRows -Window $Window -ControlName 'WildcardSelectionGrid'
     $downloadRows = Get-FEDAUTOEditorRows -Window $Window -ControlName 'DownloadGrid'
     $folders = Get-FEDAUTOFederationFolders -SettingsRows $settingsRows
+    $missingSourceFileSuffix = (Get-FEDAUTOSettingValueFromRows -Rows $settingsRows -Parameter 'MissingSourceFileSuffix' -DefaultValue '_MISSING').ToString().Trim()
+    $missingSourceFileAction = (Get-FEDAUTOSettingValueFromRows -Rows $settingsRows -Parameter 'MissingSourceFileAction' -DefaultValue 'Do nothing').ToString().Trim().ToLowerInvariant()
+    $excludeMissingSourceFilesValue = Get-FEDAUTOSettingValueFromRows -Rows $settingsRows -Parameter 'ExcludeMissingSourceFiles' -DefaultValue 'Yes'
+    $excludeMissingSourceFiles = ($missingSourceFileAction -eq 'rename') -and (Test-FEDAUTOYesLike -Value $excludeMissingSourceFilesValue)
     $downloadPreviewInfo = Get-FEDAUTODownloadPreviewMatchInfo -SettingsRows $settingsRows -DownloadRows $downloadRows
     $method = Get-FEDAUTOSettingValueFromRows -Rows $settingsRows -Parameter 'FederationGroupingMethod' -DefaultValue 'Naming Convention and Lookups'
     $isWildcard = $method.Trim().ToLowerInvariant() -eq 'wildcard selection'
@@ -1888,17 +1940,21 @@ function Show-FEDAUTOGroupingPreview {
     Add-FEDAUTOPreviewLine -Lines $lines -Text ('Input folder: {0}' -f $folders.InputFolder)
     Add-FEDAUTOPreviewLine -Lines $lines -Text ('Output folder: {0}' -f $folders.OutputFolder)
     Add-FEDAUTOPreviewLine -Lines $lines -Text ('Destination folder: {0}' -f $folders.DestinationFolder)
+    Add-FEDAUTOPreviewLine -Lines $lines -Text ('Exclude files marked missing: {0}' -f $(if ($excludeMissingSourceFiles -and -not [string]::IsNullOrWhiteSpace($missingSourceFileSuffix)) { "Yes (suffix: $missingSourceFileSuffix)" } else { 'No' }))
     if (Test-Path -LiteralPath $folders.InputFolder -PathType Container) {
         $stagedFiles = @(Get-ChildItem -LiteralPath $folders.InputFolder -File -ErrorAction SilentlyContinue)
+        if ($excludeMissingSourceFiles -and -not [string]::IsNullOrWhiteSpace($missingSourceFileSuffix)) {
+            $stagedFiles = @($stagedFiles | Where-Object { -not $_.BaseName.EndsWith($missingSourceFileSuffix, [StringComparison]::OrdinalIgnoreCase) })
+        }
         $stagedSupportedFiles = @($stagedFiles | Where-Object { @(Get-FederatableModelExtensions | ForEach-Object { $_.ToLowerInvariant() }) -contains $_.Extension.ToLowerInvariant() })
-        $stagedSourceFiles = @($stagedFiles | Where-Object { $_.Extension.ToLowerInvariant() -in @('.ifc','.dwg','.dgn','.rvt') })
+        $stagedSourceFiles = @($stagedFiles | Where-Object { $_.Extension.ToLowerInvariant() -in @('.ifc','.rvt') })
         $stagedNwcFiles = @($stagedFiles | Where-Object { $_.Extension.ToLowerInvariant() -eq '.nwc' })
         Add-FEDAUTOPreviewLine -Lines $lines -Text ("Staged input: {0} supported file(s) ({1} source model(s), {2} NWC file(s))." -f $stagedSupportedFiles.Count, $stagedSourceFiles.Count, $stagedNwcFiles.Count)
         if ($stagedSupportedFiles.Count -eq 0 -and $downloadPreviewInfo.Files.Count -gt 0) {
             Add-FEDAUTOPreviewLine -Lines $lines -Text ("WARNING: No supported files are staged in the federation input folder yet. Source acquisition preview finds {0} file(s) that can be copied first." -f $downloadPreviewInfo.Files.Count)
         }
         elseif ($stagedSourceFiles.Count -eq 0 -and $stagedNwcFiles.Count -gt 0 -and $downloadPreviewInfo.Files.Count -gt 0) {
-            Add-FEDAUTOPreviewLine -Lines $lines -Text ("NOTE: The federation input folder currently contains NWC files but no IFC/DWG/DGN/RVT source files. IFC wildcard rules may stay at 0 matches until Source acquisition copies files into this folder. Source acquisition preview finds {0} file(s)." -f $downloadPreviewInfo.Files.Count)
+            Add-FEDAUTOPreviewLine -Lines $lines -Text ("NOTE: The federation input folder currently contains NWC files but no IFC/RVT source files. IFC wildcard rules may stay at 0 matches until Source acquisition copies files into this folder. Source acquisition preview finds {0} file(s)." -f $downloadPreviewInfo.Files.Count)
         }
     }
     elseif ($downloadPreviewInfo.Files.Count -gt 0) {
@@ -1953,7 +2009,7 @@ function Show-FEDAUTOGroupingPreview {
             }
             else {
                 $explicitNwdNames = @($patterns | Where-Object { $_ -notmatch '[*?]' -and $_.EndsWith('.nwd', [StringComparison]::OrdinalIgnoreCase) })
-                foreach ($candidateFile in @(Get-FEDAUTOFederationCandidateFiles -Path $sourcePath -ExplicitNwdNames $explicitNwdNames)) {
+                foreach ($candidateFile in @(Get-FEDAUTOFederationCandidateFiles -Path $sourcePath -ExplicitNwdNames $explicitNwdNames -MissingSourceFileSuffix $missingSourceFileSuffix -ExcludeMissingSourceFiles:$excludeMissingSourceFiles)) {
                     Add-FEDAUTOGroupingPreviewCandidate -Candidates ([ref]$candidates) -Seen $candidateKeys -Candidate ([pscustomobject]@{ Name=$candidateFile.Name; FullName=$candidateFile.FullName; Planned=$false })
                 }
             }
@@ -2003,7 +2059,7 @@ function Show-FEDAUTOGroupingPreview {
         return
     }
 
-    $candidates = @(Get-FEDAUTOFederationCandidateFiles -Path $folders.InputFolder)
+    $candidates = @(Get-FEDAUTOFederationCandidateFiles -Path $folders.InputFolder -MissingSourceFileSuffix $missingSourceFileSuffix -ExcludeMissingSourceFiles:$excludeMissingSourceFiles)
     $definitions = @(Get-FederationPartDefinitions -FederationRows $federationRows)
     $groupKeys = @($definitions | Where-Object { $_.GroupOrder -gt 0 } | Sort-Object GroupOrder, SortPosition, RowOrder | Select-Object -ExpandProperty Name -Unique)
     $matchDefinitions = @($definitions | Where-Object { $_.GroupOrder -gt 0 -and -not $_.IsFileExtension })
@@ -2113,6 +2169,8 @@ function Show-SettingsEditor {
     $ifcExtractionEnabled = $ifcExtractionSetting -and $ifcExtractionSetting.Value.ToString().Trim().ToLowerInvariant() -notin @('no','n','false','0','ignore','')
     $reviztoSetting = $script:SettingsRows | Where-Object { $_.Parameter -eq 'ReviztoPublish' } | Select-Object -First 1
     $reviztoEnabled = $reviztoSetting -and $reviztoSetting.Value.ToString().Trim().ToLowerInvariant() -notin @('no','n','false','0','ignore','')
+    $missingSourceFileActionSetting = $script:SettingsRows | Where-Object { $_.Parameter -eq 'MissingSourceFileAction' } | Select-Object -First 1
+    $missingSourceFileAction = if ($missingSourceFileActionSetting -and $missingSourceFileActionSetting.Value) { $missingSourceFileActionSetting.Value.ToString().Trim().ToLowerInvariant() } else { 'do nothing' }
     $lastSection = $null
     $sectionColours = @{ 'Source acquisition'='#D9E8F5'; 'General settings'='#E8ECEF'; 'Working folders & metadata'='#E8ECEF'; 'IFC processing'='#FBE4D5'; 'IFC Data Extraction'='#D8F3DC'; 'Federation & Navisworks'='#DFF0C8'; 'Revizto publishing'='#FFF59D'; 'Other settings'='#EDE7F6' }
     $sectionHelp = @{ 'General settings'='Core paths, stage toggles, and shared defaults. These settings connect the pipeline: source acquisition populates SourceFolder, IFC processing can write ProcessedFolder, data extraction writes CSV exports, and federation writes Output and Destination results. Use the activation buttons to run only the stages needed for the current update.'; 'Working folders & metadata'='Core paths, stage toggles, and shared defaults. These settings connect the pipeline: source acquisition populates SourceFolder, IFC processing can write ProcessedFolder, data extraction writes CSV exports, and federation writes Output and Destination results. Use the activation buttons to run only the stages needed for the current update.'; 'Source acquisition'='Copies files from local paths or retrieves files from ProjectWise using the enabled Download rows. Its output becomes the source set for extraction, processing, and/or federation. Disable it when the required models are already in the configured source folder.'; 'IFC processing'='Reads IFC files and configured attribute definitions, injects selected metadata, and writes processed IFC copies. Federation can then use ProcessedFolder, or this stage can be skipped so federation reads the source folder directly.'; 'IFC Data Extraction'='Reads IFC files and exports one CSV per model with source/tab names, attribute headers, and object values. It is a reporting stage: it does not alter the model files and can be run independently of metadata processing or federation.'; 'Federation & Navisworks'='Uses naming-convention groups or wildcard selections to append model files in Navisworks and create grouped/final NWD outputs. It can read processed IFC files after metadata injection, or source files directly when processing is disabled.'; 'Revizto publishing'='Publishes the latest valid federated model to the configured Revizto target when a publish code is supplied. It normally follows federation and can be disabled when only local NWD outputs are required.'; 'Other settings'='Additional settings not yet assigned to a standard section.' }
@@ -2166,13 +2224,16 @@ function Show-SettingsEditor {
             $lastSection = $setting.Section
         }
         if ($setting.Parameter -in @('RunDownload','RunProcess','RunIfcDataExtraction','RunFederation','ReviztoPublish','FederationGroupingMethod','FederatedFileName','IncludeUnmatchedFilesInFederatedModel','NWDNamingMethod')) { continue }
+        if ($setting.Parameter -eq 'ExcludeMissingSourceFiles' -and $missingSourceFileAction -ne 'rename') { continue }
+        if ($setting.Parameter -eq 'MissingSourceFileSuffix' -and $missingSourceFileAction -in @('do nothing','donothing')) { continue }
         $panel = New-Object Windows.Controls.Grid
         $panel.Margin = '0,0,0,12'
         [void]$panel.ColumnDefinitions.Add((New-Object Windows.Controls.ColumnDefinition -Property @{ Width = '260' }))
         [void]$panel.ColumnDefinitions.Add((New-Object Windows.Controls.ColumnDefinition -Property @{ Width = '*' }))
         [void]$panel.ColumnDefinitions.Add((New-Object Windows.Controls.ColumnDefinition -Property @{ Width = '34' }))
         $label = New-Object Windows.Controls.StackPanel -Property @{ VerticalAlignment = 'Center' }
-        $name = New-Object Windows.Controls.TextBlock -Property @{ Text = $setting.Parameter; FontWeight = 'SemiBold'; VerticalAlignment = 'Center' }
+        $settingCaption = if ($setting.Parameter -eq 'MissingSourceFileSuffix' -and $missingSourceFileAction -eq 'relocate') { 'MissingFilesFolderName' } else { $setting.Parameter }
+        $name = New-Object Windows.Controls.TextBlock -Property @{ Text = $settingCaption; FontWeight = 'SemiBold'; VerticalAlignment = 'Center' }
         [void]$label.Children.Add($name)
         if ($setting.IsDefault) { [void]$label.Children.Add((New-Object Windows.Controls.TextBlock -Property @{ Text = 'Default value'; Foreground = '#607D8B'; FontSize = 11 })) }
         $info = New-Object Windows.Controls.Button -Property @{ Content = 'i'; ToolTip = (Get-SettingHelpText $setting); FontWeight = 'Bold'; FontSize = 11; Width = 19; Height = 19; Padding = 0; VerticalAlignment = 'Center'; HorizontalAlignment = 'Right' }
@@ -2181,7 +2242,15 @@ function Show-SettingsEditor {
         [Windows.Controls.Grid]::SetColumn($label, 0); [void]$panel.Children.Add($label)
         [Windows.Controls.Grid]::SetColumn($info, 2); [void]$panel.Children.Add($info)
         $type = Get-SettingControlType $setting.Parameter
-        if ($type -eq 'YesNo') {
+        if ($type -eq 'Checkbox') {
+            $isChecked = $setting.Value.ToString().Trim().ToLowerInvariant() -notin @('no','n','false','0','ignore')
+            $checkBox = New-Object Windows.Controls.CheckBox -Property @{ Content = 'Exclude files marked as missing'; IsChecked = $isChecked; VerticalAlignment = 'Center' }
+            $checkBox.Tag = $setting
+            $checkBox.Add_Checked({ param($sender, $eventArgs) $sender.Tag.Value = 'Yes' })
+            $checkBox.Add_Unchecked({ param($sender, $eventArgs) $sender.Tag.Value = 'No' })
+            [Windows.Controls.Grid]::SetColumn($checkBox, 1); [void]$panel.Children.Add($checkBox)
+        }
+        elseif ($type -eq 'YesNo') {
             $holder = New-Object Windows.Controls.StackPanel -Property @{ Orientation = 'Horizontal'; VerticalAlignment = 'Center' }
             foreach ($choice in 'Yes','No') {
                 $radio = New-Object Windows.Controls.RadioButton -Property @{ Content = $choice; GroupName = ('setting_' + $setting.Parameter); Margin = '0,0,16,0'; IsChecked = ($setting.Value -eq $choice) }
@@ -2192,9 +2261,9 @@ function Show-SettingsEditor {
             [Windows.Controls.Grid]::SetColumn($holder, 1); [void]$panel.Children.Add($holder)
         }
         elseif ($type -eq 'Choice') {
-            $choices = if ($setting.Parameter -in @('RunProcess','RunFederation','ReviztoPublish')) { @('Yes','No','Force') } elseif ($setting.Parameter -eq 'SourceAcquisitionMode') { @('Auto','Local','ProjectWise') } elseif ($setting.Parameter -eq 'NavisworksSavedNwdVersion') { @('Latest','2027','2026','2016-2025') } else { @('Full','OnlyCodes','OnlyDesc','Codes-Desc') }
+            $choices = if ($setting.Parameter -in @('RunProcess','RunFederation','ReviztoPublish')) { @('Yes','No','Force') } elseif ($setting.Parameter -eq 'SourceAcquisitionMode') { @('Auto','Local','ProjectWise') } elseif ($setting.Parameter -eq 'MissingSourceFileAction') { @('Do nothing','Rename','Relocate') } elseif ($setting.Parameter -eq 'IfcDataExtractionFailurePolicy') { @('Continue','FailPipeline') } elseif ($setting.Parameter -eq 'NavisworksSavedNwdVersion') { @('Latest','2027','2026','2016-2025') } else { @('Full','OnlyCodes','OnlyDesc','Codes-Desc') }
             $combo = New-Object Windows.Controls.ComboBox -Property @{ ItemsSource = $choices; SelectedItem = $setting.Value; MinWidth = 220 }
-            $combo.Tag = $setting; $combo.Add_SelectionChanged({ param($sender, $eventArgs) if ($sender.SelectedItem) { $sender.Tag.Value = $sender.SelectedItem.ToString() } })
+            $combo.Tag = $setting; $combo.Add_SelectionChanged({ param($sender, $eventArgs) if ($sender.SelectedItem) { $sender.Tag.Value = $sender.SelectedItem.ToString(); if ($sender.Tag.Parameter -eq 'MissingSourceFileAction') { Invoke-FEDAUTOWhenUiIsIdle { Show-SettingsEditor } } } })
             [Windows.Controls.Grid]::SetColumn($combo, 1); [void]$panel.Children.Add($combo)
         }
         elseif ($type -eq 'Folder') {
@@ -2209,7 +2278,7 @@ function Show-SettingsEditor {
         elseif ($type -eq 'File') {
             $holder = New-Object Windows.Controls.DockPanel
             $browse = New-Object Windows.Controls.Button -Property @{ Content = '...'; ToolTip = 'Browse for file'; Padding = '7,2'; MinWidth = 30; Margin = '8,0,0,0' }
-            $textBox = New-Object Windows.Controls.TextBox -Property @{ Text = $setting.Value; Padding = '7,4' }
+            $textBox = New-Object Windows.Controls.TextBox -Property @{ Text = $setting.Value; Padding = '7,4'; IsReadOnly = ($setting.Parameter -eq 'MissingSourceFileSuffix' -and $missingSourceFileAction -eq 'relocate'); ToolTip = $(if ($setting.Parameter -eq 'MissingSourceFileSuffix' -and $missingSourceFileAction -eq 'relocate') { 'Relocation always uses the deleted folder beside SourceFolder; this value is not used.' } else { $null }) }
             $textBox.Tag = $setting; $textBox.Add_TextChanged({ param($sender, $eventArgs) $sender.Tag.Value = $sender.Text })
             $browse.Tag = [pscustomobject]@{ TextBox = $textBox; Parameter = $setting.Parameter }
             $browse.Add_Click({
@@ -2959,7 +3028,7 @@ function Stop-FEDAUTOProcessTree {
     try {
         $children = @(Get-CimInstance Win32_Process -Filter "ParentProcessId=$ProcessId" -ErrorAction SilentlyContinue)
     }
-    catch { }
+    catch { Write-Verbose "Could not inspect child processes for background run ${ProcessId}. $($_.Exception.Message)" }
 
     foreach ($child in $children) {
         Stop-FEDAUTOProcessTree -ProcessId ([int]$child.ProcessId)
@@ -2971,7 +3040,7 @@ function Stop-FEDAUTOProcessTree {
             Stop-Process -Id $ProcessId -Force -ErrorAction SilentlyContinue
         }
     }
-    catch { }
+    catch { Write-Warning "Could not stop background process ${ProcessId}. $($_.Exception.Message)" }
 }
 
 function Stop-FEDAUTOBackgroundRun {

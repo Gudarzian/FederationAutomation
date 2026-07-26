@@ -165,7 +165,7 @@ function Get-FederatableModelExtensions {
 <#
 Returns the model file extensions supported by the federation workflow.
 #>
-    return @('.ifc', '.dwg', '.dgn', '.rvt', '.nwc')
+    return @('.ifc', '.rvt', '.nwc')
 }
 
 function Test-GeneratedNwcForSourceNames {
@@ -178,7 +178,7 @@ Model.nwc and Model.ifc.nwc style cache names.
     param(
         [Parameter(Mandatory = $true)][string]$NwcName,
         [Parameter(Mandatory = $true)][AllowEmptyCollection()][array]$SourceNames,
-        [string[]]$SourceExtensions = @('.ifc', '.dwg', '.dgn', '.rvt')
+        [string[]]$SourceExtensions = @('.ifc', '.rvt')
     )
 
     if ([string]::IsNullOrWhiteSpace($NwcName)) { return $false }

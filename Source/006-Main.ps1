@@ -25,12 +25,12 @@ function Get-FEDAUTOApplicationBasePath {
         $assembly = [System.Reflection.Assembly]::GetEntryAssembly()
         if ($assembly -and -not [string]::IsNullOrWhiteSpace($assembly.Location)) { [void]$candidatePaths.Add($assembly.Location) }
     }
-    catch { }
+    catch { Write-Verbose "Entry assembly location was unavailable while resolving the application base path. $($_.Exception.Message)" }
     try {
         $processPath = [System.Diagnostics.Process]::GetCurrentProcess().MainModule.FileName
         if (-not [string]::IsNullOrWhiteSpace($processPath)) { [void]$candidatePaths.Add($processPath) }
     }
-    catch { }
+    catch { Write-Verbose "Current process path was unavailable while resolving the application base path. $($_.Exception.Message)" }
 
     foreach ($candidatePath in $candidatePaths) {
         try {
@@ -39,7 +39,7 @@ function Get-FEDAUTOApplicationBasePath {
                 if ($hostProcessNames -notcontains $processName) { return (Split-Path -Parent $candidatePath) }
             }
         }
-        catch { }
+        catch { Write-Verbose "Could not inspect application-base candidate '$candidatePath'. $($_.Exception.Message)" }
     }
 
     if ($PSCommandPath) { return (Split-Path -Parent $PSCommandPath) }
@@ -639,7 +639,7 @@ function Resolve-ProcessInputs {
     $attributesTimestamp = ""
     if (Test-Path $attributesPath -PathType Leaf) {
         try {
-            $attributeRows = @(Get-ExcelDataSafe -Path $attributesPath -NamedRange 'Attributes')
+            $attributeRows = @(Import-Csv -LiteralPath $attributesPath -ErrorAction Stop)
         }
         catch {
             Write-Warning "Unable to read attributes CSV from '$attributesPath'. Processing will handle this as a stage error. Error: $_"

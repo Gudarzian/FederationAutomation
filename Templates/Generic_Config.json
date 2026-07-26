@@ -32,7 +32,7 @@
                      {
                          "Run":  "No",
                          "ReadFolder":  "ExampleSourceFiles",
-                         "FileFilter":  "*.ifc,*.dwg,*.dgn,*.rvt,*.nwc",
+                         "FileFilter":  "*.ifc,*.rvt,*.nwc",
                          "Exclude":  "delete,withdrawn,superseded",
                          "SkipIfSame":  "Yes",
                          "CheckDateToo":  "Yes",
@@ -153,7 +153,7 @@
     "wildcardSelection":  [
                               {
                                   "Run":  "No",
-                                  "Inclusions":  "*.ifc,*.dwg,*.dgn,*.rvt,*.nwc",
+                                  "Inclusions":  "*.ifc,*.rvt,*.nwc",
                                   "Exclusions":  "delete,withdrawn,superseded",
                                   "ExportFileName":  "All Source Models.nwd",
                                   "ReadFromOutputFolder":  "No",

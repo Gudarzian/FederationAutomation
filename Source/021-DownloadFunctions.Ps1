@@ -109,156 +109,6 @@ Gets a document attribute by field name, including CustomAttributes fallback.
     return $value
 }
 
-function Invoke-AutoCADScript {
-<#
-Runs AutoCAD scripts against a DWG and writes the output file.
-#>
-    param (
-        [string]$InputDWG,
-        [string]$ScriptFiles,
-        [string]$OutputDWG
-    )
-   if ($null -eq (Get-Variable -Name "acadApp" -ErrorAction SilentlyContinue)) {
-        Write-Host "Running AutoCAD"
-        $global:acadApp = New-Object -ComObject "AutoCAD.Application"
-        #$acadApp.Visible = $true
-        do{
-            $Failed = $false
-            Try{
-                $acadApp.ActiveDocument.SendCommand("XLOADCTL 0`n")    # Disable DWG Xrefs
-                $acadApp.ActiveDocument.SendCommand("IMAGEFRAME 0`n")  # Disable image loading
-                $acadApp.ActiveDocument.SendCommand("DWFFRAME 0`n")    # Disable DWF loading
-                $acadApp.ActiveDocument.SendCommand("FILEDIA 0`n")     # Disable file dialog
-            } catch {     
-                Start-Sleep -Milliseconds 500
-                $Failed = $true }
-            } while ($Failed)
-            foreach ($doc in @($acadApp.Documents)) {
-                $doc.Close($false)  # false = do not save
-            }
-    } 
-    $Counter=0
-    do{
-        $Failed = $false
-        Try{
-            $document = $acadApp.Documents.Open($InputDWG)
-            Start-Sleep -Milliseconds 5000
-        } 
-        catch {
-            $Counter++
-            Start-Sleep -Milliseconds 5000
-            $Failed = $true 
-            Write-Host "Error Openning File - Trying again > $Counter"
-            }
-    } while ($Failed -and $Counter -le 5 )
-    if( $Counter -eq 5){
-        Write-Host "Error Openning File - Exiting after $Counter Try"
-    }
-    $ScriptFilesList = $ScriptFiles -split ","
-    Foreach ($ScriptFile in $ScriptFilesList) 
-    {
-    $Counter=0
-    $ScriptFile = Join-Path $basePath $ScriptFile
-    if (!(Test-Path -Path $ScriptFile)) 
-        {Write-Output "Script file does not exist: $ScriptFile"; return}
-    do{
-        $Failed = $false
-        Try{
-            $acadApp.ActiveDocument.SendCommand("FILEDIA 0`n")
-            $acadApp.ActiveDocument.SendCommand('_.SCRIPT "' + $ScriptFile + '"' + [Environment]::NewLine)
-            Start-Sleep -Milliseconds 5000
-        } 
-        catch {
-            $Counter++
-            Start-Sleep -Milliseconds 5000
-            $Failed = $true 
-            Write-Host "Error Running the Script File - Trying again> $Counter"
-            }
-    } while ($Failed -and $Counter -le 5 )
-    if( $Counter -eq 5)
-    {
-        Write-Host "Error Running the Script File - Exiting after $Counter Try"
-        }
-    }    
-    $Counter=0
-    do{
-        $Failed = $false
-        Try{
-            $document.SaveAs($OutputDWG)
-           } 
-        catch {
-            $Counter++
-            Start-Sleep -Milliseconds 2000
-            $Failed = $true 
-            Write-Host "Error Saving the updated File - Trying again> $Counter"
-            }
-    } while ($Failed -and $Counter -le 5 )
-    if( $Counter -eq 5)
-    {
-        Write-Host "Error Saving the updated File - Exiting after $Counter Try"
-        }
-    $Counter=0
-    do{
-        $Failed = $false
-        Try{
-            $document.Close($false)
-           } 
-        catch {
-            $Counter++
-            Start-Sleep -Milliseconds 2000
-            $Failed = $true 
-            Write-Host "Error Closing the Saved File - Trying again> $Counter"
-            }
-    } while ($Failed -and $Counter -le 5 )
-    if( $Counter -eq 5){
-        Write-Host "Error Closing the Saved File - Exiting after $Counter Try"
-    }
-}
-
-Function DPU($Message) {
-# Download Process Update
-<#
-Downloads a PW document and optionally runs AutoCAD processing.
-#>
-    $downloadStart = Get-Date
-    $displayName = if ($TempD.FileName) { $TempD.FileName } else { $TempD.Name }
-    Write-host $displayName -NoNewline -ForegroundColor Green
-    Write-host " Downloading >>>> " $TempD.FileSize " ...bytes " -NoNewline -ForegroundColor Red
-    Write-host   -ForegroundColor White
-    try {
-        $null= CheckOut-PWDocuments -InputDocument $TempD -copyout -NoReferences -ExportFolder $LocalFolder -ErrorAction Stop
-    }
-    catch {
-        Write-Warning "Download failed for $($TempD.FileName): $_"
-        return
-    }
-    if (-not (Get-Variable -Name PWDownloadedCount -Scope Global -ErrorAction SilentlyContinue)) {
-        $global:PWDownloadedCount = 0
-    }
-    $global:PWDownloadedCount++
-    Write-host " >>>> downloaded - $Message"
-    $DownloadedFile = Join-Path $LocalFolder $TempD.FileName
-    $ProcessedFile = Join-Path $Tempfolder $TempD.FileName
-    $TargetFile = Join-Path $F.TargetFolder $TempD.FileName
-    if ($null -eq $F.ScriptFiles)
-        {   
-        Write-host " >>>> $($TempD.FileName) - No script files provided, copying without processing"
-        Copy-Item -Path $DownloadedFile -Destination $TargetFile -Force
-        Write-host " >>>> $($TempD.FileName) - saved to $($F.TargetFolder)"
-        }
-    else 
-        {
-        Write-host " >>>> Running $($F.ScriptFiles) on $($TempD.FileName) - Processing the file"
-        Invoke-AutoCADScript -InputDWG $DownloadedFile -ScriptFiles $F.ScriptFiles -OutputDWG $ProcessedFile 
-        Copy-Item -Path $ProcessedFile -Destination $TargetFile -Force
-        Get-ChildItem -Path $ProcessedFile -File -Recurse | Remove-Item -Force                    
-        Write-host " >>>> $($TempD.FileName) - Processed and saved to $($F.TargetFolder)"
-        }
-    $downloadEnd = Get-Date
-    $downloadDuration = New-TimeSpan -Start $downloadStart -End $downloadEnd
-    Write-Host " >>>> Duration: $([math]::Round($downloadDuration.TotalSeconds,2)) seconds"
-}
-
 Function DU($Message) {
 # Download Process Update
  <#
@@ -403,10 +253,10 @@ Downloads IFCs from ProjectWise and writes the attributes workbook.
     $previousAttributeRows = @()
     if (Test-Path $PWAttributes -PathType Leaf) {
         try {
-            $previousAttributeRows = Get-ExcelDataSafe -Path $PWAttributes -NamedRange 'Attributes'
+            $previousAttributeRows = @(Import-Csv -LiteralPath $PWAttributes -ErrorAction Stop)
         }
         catch {
-            Write-Warning "Unable to read previous attributes workbook '$PWAttributes' for deleted-file metadata. Error: $_"
+            Write-Warning "Unable to read previous attributes CSV '$PWAttributes' for missing-file metadata. Error: $_"
             $previousAttributeRows = @()
         }
     }
@@ -435,6 +285,19 @@ Downloads IFCs from ProjectWise and writes the attributes workbook.
         catch {
             Write-Warning "Transcript could not be started. Logging will be console-only. Error: $_"
         }
+    }
+
+    $missingSourceFileActionValue = $Config | Where-Object { $_.Parameter -eq 'MissingSourceFileAction' } | Select-Object -ExpandProperty Value -First 1
+    $missingSourceFileAction = if ($missingSourceFileActionValue) { $missingSourceFileActionValue.ToString().Trim().ToLowerInvariant() } else { 'do nothing' }
+    if ($missingSourceFileAction -eq 'do nothing') { $missingSourceFileAction = 'donothing' }
+    if ($missingSourceFileAction -notin @('rename','relocate','donothing')) {
+        Write-Warning "Unknown MissingSourceFileAction '$missingSourceFileActionValue'. Using Do nothing."
+        $missingSourceFileAction = 'donothing'
+    }
+    $missingSourceFileSuffix = $Config | Where-Object { $_.Parameter -eq 'MissingSourceFileSuffix' } | Select-Object -ExpandProperty Value -First 1
+    if ($missingSourceFileAction -eq 'rename' -and [string]::IsNullOrWhiteSpace($missingSourceFileSuffix)) { $missingSourceFileSuffix = '_MISSING' }
+    if ($missingSourceFileAction -eq 'rename' -and $missingSourceFileSuffix.IndexOfAny([IO.Path]::GetInvalidFileNameChars()) -ge 0) {
+        throw "MissingSourceFileSuffix contains invalid file-name characters: '$missingSourceFileSuffix'"
     }
     Write-Host "Logging to $LogFilePath"
     Write-Host "=== START 020-PWDownload ==="
@@ -662,7 +525,7 @@ Downloads IFCs from ProjectWise and writes the attributes workbook.
         Write-DownloadProgress -Status 'Copying' -FileName $File.Name
 
         $destination = Join-Path $LocalFolder $File.Name
-        $skipIfSame = -not ($Row.PSObject.Properties.Name -contains 'SkipIfSame') -or -not ($Row.SkipIfSame -eq 'No')
+        $skipIfSame = -not ($Row.PSObject.Properties.Name -contains 'SkipIfSame') -or (Test-YesLike -Value $Row.SkipIfSame)
         $checkDateToo = $Row.PSObject.Properties.Name -contains 'CheckDateToo' -and (Test-YesLike -Value $Row.CheckDateToo)
         $copyNeeded = $true
         $reason = "file was not copied before"
@@ -782,13 +645,11 @@ Downloads IFCs from ProjectWise and writes the attributes workbook.
         $script:FEDAUTODownloadFileTotal = 0
         $script:FEDAUTODownloadFileCurrent = 0
         $readFolder = Get-ReadFolderValue -Row $F
-        $checkDateValue = $null
-        if ($F.PSObject.Properties.Name -contains 'CheckDateToo') {
-            $checkDateValue = $F.CheckDateToo
-        }
+        $skipIfSame = -not ($F.PSObject.Properties.Name -contains 'SkipIfSame') -or (Test-YesLike -Value $F.SkipIfSame)
+        $checkDateToo = $F.PSObject.Properties.Name -contains 'CheckDateToo' -and (Test-YesLike -Value $F.CheckDateToo)
         Write-Host "------"
         Write-Host "Read folder: $readFolder"
-        Write-Host "File filter: $($F.FileFilter); SkipIfSame: $($F.SkipIfSame); CheckDateToo: $checkDateValue; Exclude: $($F.Exclude)"
+        Write-Host "File filter: $($F.FileFilter); SkipIfSame: $skipIfSame; CheckDateToo: $checkDateToo; Exclude: $($F.Exclude)"
 
         $folderInfo = Resolve-ProjectWiseReadFolderInfo -Path $readFolder
         if ($folderInfo) {
@@ -918,15 +779,15 @@ Downloads IFCs from ProjectWise and writes the attributes workbook.
                 if (Test-Path $FilePath)
                     {
                     $LocalFile = Get-ChildItem -Path $LocalFolder $TempD.FileName
-                    if ($F.SkipIfSame -eq "No")
+                    if (-not $skipIfSame)
                         {
                         DU("Force download as requested")
                         }
                     else
                         {
-                        if(!($TempD.FileSize -eq $LocalFile.Length) -or `
-                           (!($TempD.FileUpdateDate.ToString("yyyy-MM-dd HH:mm tt") -ge $LocalFile.LastWriteTime.ToString("yyyy-MM-dd HH:mm tt")) `
-                            -and ($checkDateValue -eq "Yes")))
+                        $sameSize = $TempD.FileSize -eq $LocalFile.Length
+                        $sameDate = ([datetime]$TempD.FileUpdateDate).ToUniversalTime() -eq $LocalFile.LastWriteTimeUtc
+                        if((-not $sameSize) -or ($checkDateToo -and -not $sameDate))
                             {
                             DU("The PW and the local files were different")
                             }
@@ -934,7 +795,7 @@ Downloads IFCs from ProjectWise and writes the attributes workbook.
                             {
                             $displayName = if ($TempD.FileName) { $TempD.FileName } else { $TempD.Name }
                             Write-host $displayName -NoNewline -ForegroundColor Green
-                            if  ($checkDateValue -eq "Yes") {
+                            if ($checkDateToo) {
                                 Write-host " NOT downloaded >>>> Same date and size" -ForegroundColor Red
                             }
                             else {
@@ -1036,9 +897,15 @@ Downloads IFCs from ProjectWise and writes the attributes workbook.
             Write-Host "Safety response active: skipping deleted-file and orphan NWC cleanup because some read-folder searches failed." -ForegroundColor Yellow
         }
 
-        if ($latestNames.Count -gt 0 -and (Test-Path $LocalFolder -PathType Container) -and -not $partialSearchFailure) {
+        # A missing file must be known to the previous acquisition manifest and
+        # every active source search must have completed successfully. This keeps
+        # manually staged files and incomplete source inventories untouched.
+        if ($missingSourceFileAction -eq 'donothing') {
+            Write-Host 'Missing-source-file action is Do nothing; skipping missing-file cleanup.'
+        }
+        elseif ($latestNames.Count -gt 0 -and $searchAttemptCount -gt 0 -and $searchFailedCount -eq 0 -and (Test-Path $LocalFolder -PathType Container)) {
             $deletedRoot = Join-Path (Split-Path -Parent $LocalFolder) 'deleted'
-            if (-not (Test-Path $deletedRoot)) { New-Item -Path $deletedRoot -ItemType Directory -Force | Out-Null }
+            if ($missingSourceFileAction -eq 'relocate' -and -not (Test-Path $deletedRoot)) { New-Item -Path $deletedRoot -ItemType Directory -Force | Out-Null }
 
             $deletedLogRoot = if ($LogsFolder) { $LogsFolder } else { Split-Path -Parent $LocalFolder }
             $deletedLogPath = Join-Path $deletedLogRoot 'Deleted_files.csv'
@@ -1058,46 +925,77 @@ Downloads IFCs from ProjectWise and writes the attributes workbook.
                 Get-FederatableModelExtensions
             }
             else {
-                @('.ifc', '.dwg', '.dgn', '.rvt')
+                @('.ifc', '.rvt')
             }
             $localFiles = @(Get-ChildItem -Path $LocalFolder -File | Where-Object {
                 $federatableExtensions -contains $_.Extension.ToLowerInvariant()
             })
             foreach ($file in $localFiles) {
                 if ($latestNames -contains $file.Name) { continue }
-                if ($file.Extension.ToLowerInvariant() -eq '.nwc' -and
-                    (Test-GeneratedNwcForSourceNames -NwcName $file.Name -SourceNames $latestNames)) {
-                    Write-Host "Keeping generated NWC cache: $($file.Name)"
+                if ($file.BaseName.EndsWith($missingSourceFileSuffix, [System.StringComparison]::OrdinalIgnoreCase)) {
+                    Write-Host "Keeping already marked missing file: $($file.Name)"
+                    continue
+                }
+                if (-not $previousLookup.ContainsKey($file.Name)) {
+                    Write-Host "Keeping untracked staged file: $($file.Name)" -ForegroundColor Yellow
                     continue
                 }
 
-                $deletedPath = Join-Path $deletedRoot $file.Name
+                $actionTarget = if ($missingSourceFileAction -eq 'rename') {
+                    Join-Path $file.DirectoryName ($file.BaseName + $missingSourceFileSuffix + $file.Extension)
+                }
+                else {
+                    Join-Path $deletedRoot $file.Name
+                }
+                if (Test-Path -LiteralPath $actionTarget) {
+                    Write-Warning "Missing-file action skipped for '$($file.FullName)' because target already exists: '$actionTarget'"
+                    continue
+                }
                 try {
-                    Move-Item -Path $file.FullName -Destination $deletedPath -Force
+                    Move-Item -LiteralPath $file.FullName -Destination $actionTarget -ErrorAction Stop
                 }
                 catch {
-                    Write-Warning "Failed to relocate deleted file '$($file.FullName)': $_"
+                    Write-Warning "Failed to $missingSourceFileAction missing source file '$($file.FullName)': $_"
+                    continue
                 }
 
                 $processedPath = $null
                 if ($ProcessedFolder -and (Test-Path $ProcessedFolder -PathType Container)) {
                     $candidate = Join-Path $ProcessedFolder $file.Name
                     if (Test-Path $candidate -PathType Leaf) {
+                        $processedTarget = if ($missingSourceFileAction -eq 'rename') {
+                            Join-Path (Split-Path -Parent $candidate) (([IO.Path]::GetFileNameWithoutExtension($candidate)) + $missingSourceFileSuffix + [IO.Path]::GetExtension($candidate))
+                        }
+                        else {
+                            $processedDeletedRoot = Join-Path (Split-Path -Parent $ProcessedFolder) 'deleted'
+                            if (-not (Test-Path $processedDeletedRoot)) { New-Item -Path $processedDeletedRoot -ItemType Directory -Force | Out-Null }
+                            Join-Path $processedDeletedRoot ([IO.Path]::GetFileName($candidate))
+                        }
                         try {
-                            Remove-Item -Path $candidate -Force
+                            if (Test-Path -LiteralPath $processedTarget) { throw "Target already exists: $processedTarget" }
+                            Move-Item -LiteralPath $candidate -Destination $processedTarget -ErrorAction Stop
+                            $processedPath = $processedTarget
                         }
                         catch {
-                            Write-Warning "Failed to delete processed file '$candidate': $_"
+                            Write-Warning "Failed to $missingSourceFileAction processed file '$candidate': $_"
                         }
-                        $processedPath = $candidate
                     }
                     $nwcCandidate = Join-Path $ProcessedFolder ([System.IO.Path]::GetFileNameWithoutExtension($file.Name) + '.nwc')
                     if (Test-Path $nwcCandidate -PathType Leaf) {
+                        $nwcTarget = if ($missingSourceFileAction -eq 'rename') {
+                            Join-Path (Split-Path -Parent $nwcCandidate) (([IO.Path]::GetFileNameWithoutExtension($nwcCandidate)) + $missingSourceFileSuffix + [IO.Path]::GetExtension($nwcCandidate))
+                        }
+                        else {
+                            $processedDeletedRoot = Join-Path (Split-Path -Parent $ProcessedFolder) 'deleted'
+                            if (-not (Test-Path $processedDeletedRoot)) { New-Item -Path $processedDeletedRoot -ItemType Directory -Force | Out-Null }
+                            Join-Path $processedDeletedRoot ([IO.Path]::GetFileName($nwcCandidate))
+                        }
                         try {
-                            Remove-Item -Path $nwcCandidate -Force
+                            if (Test-Path -LiteralPath $nwcTarget) { throw "Target already exists: $nwcTarget" }
+                            Move-Item -LiteralPath $nwcCandidate -Destination $nwcTarget -ErrorAction Stop
                         }
                         catch {
-                            Write-Warning "Failed to delete processed NWC '$nwcCandidate': $_"
+                            Write-Warning "Failed to $missingSourceFileAction processed NWC '$nwcCandidate': $_"
                         }
                     }
                 }
@@ -1115,9 +1013,10 @@ Downloads IFCs from ProjectWise and writes the attributes workbook.
 
                 $deletedRows += [pscustomobject]@{
                     DeletedDate = (Get-Date).ToString("yyyy-MM-dd HH:mm")
+                    Action      = $missingSourceFileAction
                     FileName    = $file.Name
                     SourcePath  = $file.FullName
-                    DeletedPath = $deletedPath
+                    DeletedPath = $actionTarget
                     ProcessedPath = $processedPath
                     PW_Doc_GUID = $pwGuid
                     PW_Doc_URN  = $pwUrn
@@ -1130,10 +1029,10 @@ Downloads IFCs from ProjectWise and writes the attributes workbook.
                 $existingRows = @()
                 if (Test-Path $deletedLogPath -PathType Leaf) {
                     try {
-                        $existingRows = Get-ExcelDataSafe -Path $deletedLogPath -NamedRange 'Deleted'
+                        $existingRows = @(Import-Csv -LiteralPath $deletedLogPath -ErrorAction Stop)
                     }
                     catch {
-                        Write-Warning "Unable to read existing deleted log '$deletedLogPath'. Overwriting."
+                        Write-Warning "Unable to read existing missing-file log '$deletedLogPath'. Appending new rows only."
                         $existingRows = @()
                     }
                 }
@@ -1144,30 +1043,8 @@ Downloads IFCs from ProjectWise and writes the attributes workbook.
             }
         }
 
-        if ($ProcessedFolder -and (Test-Path $ProcessedFolder -PathType Container) -and $latestNames.Count -gt 0 -and -not $partialSearchFailure) {
-            $federatableExtensions = if (Get-Command Get-FederatableModelExtensions -ErrorAction SilentlyContinue) {
-                Get-FederatableModelExtensions
-            }
-            else {
-                @('.ifc', '.dwg', '.dgn', '.rvt')
-            }
-            $processedSourceNames = @(Get-ChildItem -Path $ProcessedFolder -File | Where-Object {
-                $_.Extension.ToLowerInvariant() -in @('.ifc', '.dwg', '.dgn', '.rvt')
-            } | Select-Object -ExpandProperty Name)
-            $nwcFiles = Get-ChildItem -Path $ProcessedFolder -Filter "*.nwc" -File
-            foreach ($nwc in $nwcFiles) {
-                $hasSource = Test-GeneratedNwcForSourceNames -NwcName $nwc.Name -SourceNames $latestNames
-                $hasProcessedSource = Test-GeneratedNwcForSourceNames -NwcName $nwc.Name -SourceNames $processedSourceNames
-                if (-not $hasSource -and -not $hasProcessedSource) {
-                    try {
-                        Remove-Item -Path $nwc.FullName -Force
-                    }
-                    catch {
-                        Write-Warning "Failed to delete orphan NWC '$($nwc.FullName)': $_"
-                    }
-                }
-            }
-        }
+        # Do not sweep orphan NWC files. Matching NWC files are acted on only
+        # with a conservatively confirmed tracked source file above.
     }
     $global:PWDeletedCount = $deletedCount
     $ProcessEndTime = Get-Date

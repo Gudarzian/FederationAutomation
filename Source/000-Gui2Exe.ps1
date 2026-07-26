@@ -97,7 +97,10 @@ $compiledInput = Join-Path $bundleDir '007-Gui.compiled.ps1'
 New-FEDAUTOCompiledInputWithBuildMetadata -SourcePath $inputFile -DestinationPath $compiledInput -ExeName $exeName -BuildVersion $buildVersion
 $inputFile = $compiledInput
 
-Import-Module ps2exe -ErrorAction Stop
+$ps2exeVersion = '1.0.18'
+$ps2exeModule = Get-Module -ListAvailable -Name ps2exe | Where-Object { $_.Version.ToString() -eq $ps2exeVersion } | Select-Object -First 1
+if (-not $ps2exeModule) { Install-Module -Name ps2exe -RequiredVersion $ps2exeVersion -Scope CurrentUser -Force -AllowClobber -ErrorAction Stop }
+Import-Module ps2exe -RequiredVersion $ps2exeVersion -ErrorAction Stop
 $resources = @{}
 foreach ($file in '012-SharedFunctions.Ps1','013-ConfigFunctions.Ps1','041-FederationFunctions.Ps1') {
     $path = Join-Path $basePath $file

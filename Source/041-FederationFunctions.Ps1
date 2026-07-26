@@ -215,16 +215,21 @@ were generated from source model files already present in the same folder.
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)][string]$Path,
-        [string[]]$Extensions = @('.ifc', '.dwg', '.dgn', '.rvt', '.nwc'),
-        [switch]$KeepGeneratedNwc
+        [string[]]$Extensions = @('.ifc', '.rvt', '.nwc'),
+        [switch]$KeepGeneratedNwc,
+        [string]$MissingSourceFileSuffix,
+        [switch]$ExcludeMissingSourceFiles
     )
 
     $allFiles = @(Get-ChildItem -LiteralPath $Path -File -ErrorAction Stop)
     $normalizedExtensions = @($Extensions | ForEach-Object { $_.ToLowerInvariant() })
     $candidates = @($allFiles | Where-Object { $normalizedExtensions -contains $_.Extension.ToLowerInvariant() })
+    if ($ExcludeMissingSourceFiles -and -not [string]::IsNullOrWhiteSpace($MissingSourceFileSuffix)) {
+        $candidates = @($candidates | Where-Object { -not $_.BaseName.EndsWith($MissingSourceFileSuffix, [System.StringComparison]::OrdinalIgnoreCase) })
+    }
     if ($KeepGeneratedNwc) { return $candidates }
 
-    $sourceExtensions = @('.ifc', '.dwg', '.dgn', '.rvt')
+    $sourceExtensions = @('.ifc', '.rvt')
     $generatedNwcNames = @{}
     foreach ($source in @($allFiles | Where-Object { $sourceExtensions -contains $_.Extension.ToLowerInvariant() })) {
         $generatedNwcNames["$($source.BaseName).nwc".ToLowerInvariant()] = $true
@@ -782,6 +787,12 @@ Groups IFCs and federates them into Navisworks outputs.
     if (-not $ConfigSettings -or $ConfigSettings.Count -eq 0) {
         throw "Settings were not supplied to Invoke-GroupFilesForFedProcess."
     }
+    $missingSourceFileSuffix = ($ConfigSettings | Where-Object { $_.Parameter -eq 'MissingSourceFileSuffix' } | Select-Object -ExpandProperty Value -First 1)
+    if ([string]::IsNullOrWhiteSpace($missingSourceFileSuffix)) { $missingSourceFileSuffix = '_MISSING' }
+    $missingSourceFileAction = ($ConfigSettings | Where-Object { $_.Parameter -eq 'MissingSourceFileAction' } | Select-Object -ExpandProperty Value -First 1)
+    if ([string]::IsNullOrWhiteSpace($missingSourceFileAction)) { $missingSourceFileAction = 'Do nothing' }
+    $excludeMissingSourceFilesValue = ($ConfigSettings | Where-Object { $_.Parameter -eq 'ExcludeMissingSourceFiles' } | Select-Object -ExpandProperty Value -First 1)
+    $excludeMissingSourceFiles = $missingSourceFileAction.ToString().Trim().ToLowerInvariant() -eq 'rename' -and ([string]::IsNullOrWhiteSpace($excludeMissingSourceFilesValue) -or $excludeMissingSourceFilesValue.ToString().Trim().ToLowerInvariant() -notin @('no','n','false','0','ignore'))
     $runFederationKeys = @('runfederation','federationrun','runfederate','federate','federation')
     $runFederationRow = $ConfigSettings | Where-Object {
         $paramRaw = $_.Parameter
@@ -854,6 +865,7 @@ Groups IFCs and federates them into Navisworks outputs.
     Write-Host "=== START 050-GroupFilesForFedProcess ==="
     Write-Host "Process start time: $ProcessStartTime"
     Write-Host "Config file: $ConfigFilePath"
+    Write-Host ("Exclude missing source files: {0}" -f $(if ($excludeMissingSourceFiles) { "Yes (suffix: $missingSourceFileSuffix)" } else { 'No' }))
 
     # Load federation inputs/outputs and Navisworks preferences from Settings.
     $federationInputPath = CureFolderPath ($ConfigSettings | Where-Object { $_.Parameter -eq "FederationInputFolder" }  | Select-Object -ExpandProperty Value)
@@ -1153,7 +1165,7 @@ Groups IFCs and federates them into Navisworks outputs.
         $script:FEDAUTONwdProgressTotal = $wildcardRows.Count
         $script:FEDAUTONwdProgressCurrent = 0
         Write-FederationNwdProgress -Status 'Queued' -Name 'Wildcard Selection'
-        $federatableExtensions = if (Get-Command Get-FederatableModelExtensions -ErrorAction SilentlyContinue) { Get-FederatableModelExtensions } else { @('.ifc', '.dwg', '.dgn', '.rvt', '.nwc') }
+        $federatableExtensions = if (Get-Command Get-FederatableModelExtensions -ErrorAction SilentlyContinue) { Get-FederatableModelExtensions } else { @('.ifc', '.rvt', '.nwc') }
         for ($ruleIndex = 0; $ruleIndex -lt $wildcardRows.Count; $ruleIndex++) {
             $rule = $wildcardRows[$ruleIndex]
             $inclusionText = [string](Get-RowValue -Row $rule -Candidates @('Inclusions','Inclusion'))
@@ -1181,7 +1193,7 @@ Groups IFCs and federates them into Navisworks outputs.
                 @(Get-ChildItem -LiteralPath $sourcePath -File -ErrorAction Stop | Where-Object { $_.FullName -ne $targetPath })
             }
             else {
-                $sourceCandidates = @(Get-FederationCandidateFiles -Path $sourcePath -Extensions $federatableExtensions)
+                $sourceCandidates = @(Get-FederationCandidateFiles -Path $sourcePath -Extensions $federatableExtensions -MissingSourceFileSuffix $missingSourceFileSuffix -ExcludeMissingSourceFiles:$excludeMissingSourceFiles)
                 # NWDs are not general source inputs, but a rule may explicitly
                 # name one to federate a pre-built Navisworks model.
                 $explicitNwdNames = @($inclusions | Where-Object {
@@ -1309,9 +1321,9 @@ Groups IFCs and federates them into Navisworks outputs.
         Get-FederatableModelExtensions
     }
     else {
-        @('.ifc', '.dwg', '.dgn', '.rvt', '.nwc')
+        @('.ifc', '.rvt', '.nwc')
     }
-    $modelCandidates = @(Get-FederationCandidateFiles -Path $InputFolderPath -Extensions $federatableExtensions)
+    $modelCandidates = @(Get-FederationCandidateFiles -Path $InputFolderPath -Extensions $federatableExtensions -MissingSourceFileSuffix $missingSourceFileSuffix -ExcludeMissingSourceFiles:$excludeMissingSourceFiles)
     if ($modelCandidates.Count -eq 0) {
         $message = "No supported federation files found in input folder '$InputFolderPath'."
         Write-Log -Message $message -Color 'Red' -Settings $ConfigSettings -LogsFolderOverride $LogsFolder -BasePath $basePath

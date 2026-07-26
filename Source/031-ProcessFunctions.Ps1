@@ -665,7 +665,7 @@ Updates the Name attribute (3rd IFC argument) for a single IFC entity line.
     return $Line
 }
 
-function Update-IfcProjectProperties {
+function Update-IfcProjectPropertiesLegacy {
 <#
 Injects property sets and attributes into an IFC file (IfcProject scope).
 #>
@@ -813,6 +813,107 @@ Injects property sets and attributes into an IFC file (IfcProject scope).
     Move-Item -Path $tempPath -Destination $DestinationPath -Force
 }
 
+function Update-IfcProjectProperties {
+<#
+Updates IfcProject property sets using IfcOpenShell. This supersedes the
+legacy text writer above so multiline STEP entities and source encoding are
+handled by an IFC-aware parser.
+#>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)][string]$SourcePath,
+        [Parameter(Mandatory = $true)][string]$DestinationPath,
+        [Parameter(Mandatory = $true)][array]$PropertySets,
+        [Parameter(Mandatory = $true)][string]$PythonPath,
+        [string]$TopLevelName
+    )
+
+    if (-not (Test-Path -LiteralPath $SourcePath -PathType Leaf)) { throw "Input IFC not found: $SourcePath" }
+    $destinationDirectory = Split-Path -Parent $DestinationPath
+    if (-not (Test-Path -LiteralPath $destinationDirectory -PathType Container)) {
+        New-Item -ItemType Directory -Path $destinationDirectory -Force | Out-Null
+    }
+
+    $tempRoot = Join-Path ([IO.Path]::GetTempPath()) ('FEDAUTO-IfcWrite-' + [guid]::NewGuid().ToString('N'))
+    try {
+        New-Item -ItemType Directory -Path $tempRoot -Force | Out-Null
+        $scriptPath = Join-Path $tempRoot 'update_ifc_metadata.py'
+        $payloadPath = Join-Path $tempRoot 'property_sets.json'
+        $pythonScript = @'
+import argparse
+import json
+import os
+import tempfile
+import ifcopenshell
+import ifcopenshell.api
+
+def existing_pset(project, name):
+    for relation in getattr(project, "IsDefinedBy", []) or []:
+        if relation.is_a("IfcRelDefinesByProperties"):
+            definition = relation.RelatingPropertyDefinition
+            if definition and definition.is_a("IfcPropertySet") and definition.Name == name:
+                return definition
+    return None
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--source", required=True)
+    parser.add_argument("--destination", required=True)
+    parser.add_argument("--payload", required=True)
+    parser.add_argument("--project-name", default="")
+    args = parser.parse_args()
+    with open(args.payload, encoding="utf-8") as handle:
+        payload = json.load(handle)
+    model = ifcopenshell.open(args.source)
+    projects = model.by_type("IfcProject")
+    if not projects:
+        raise RuntimeError("IFCPROJECT was not found")
+    project = projects[0]
+    if args.project_name:
+        project.Name = args.project_name
+    for definition in payload:
+        name = str(definition.get("name") or "").strip()
+        if not name:
+            continue
+        values = {}
+        for attribute in definition.get("attributes") or []:
+            key = str(attribute.get("name") or "").strip()
+            value = attribute.get("value")
+            if key and value is not None and str(value).strip():
+                values[key] = str(value)
+        if not values:
+            continue
+        pset = existing_pset(project, name)
+        if pset is None:
+            pset = ifcopenshell.api.run("pset.add_pset", model, product=project, name=name)
+        ifcopenshell.api.run("pset.edit_pset", model, pset=pset, properties=values)
+    directory = os.path.dirname(os.path.abspath(args.destination))
+    os.makedirs(directory, exist_ok=True)
+    descriptor, temporary = tempfile.mkstemp(prefix=".fedauto-", suffix=".ifc", dir=directory)
+    os.close(descriptor)
+    try:
+        model.write(temporary)
+        os.replace(temporary, args.destination)
+    finally:
+        if os.path.exists(temporary):
+            os.remove(temporary)
+
+if __name__ == "__main__":
+    main()
+'@
+        [IO.File]::WriteAllText($scriptPath, $pythonScript, [Text.UTF8Encoding]::new($false))
+        [IO.File]::WriteAllText($payloadPath, ($PropertySets | ConvertTo-Json -Depth 12), [Text.UTF8Encoding]::new($false))
+        $arguments = @($scriptPath, '--source', $SourcePath, '--destination', $DestinationPath, '--payload', $payloadPath)
+        if (-not [string]::IsNullOrWhiteSpace($TopLevelName)) { $arguments += @('--project-name', $TopLevelName) }
+        $result = Invoke-FEDAUTOExternalCommand -FilePath $PythonPath -ArgumentList $arguments
+        if ($result.ExitCode -ne 0) { throw ("IfcOpenShell IFC update failed. {0} {1}" -f $result.StdOut, $result.StdErr) }
+        if (-not (Test-Path -LiteralPath $DestinationPath -PathType Leaf)) { throw "IfcOpenShell did not create '$DestinationPath'." }
+    }
+    finally {
+        if (Test-Path -LiteralPath $tempRoot) { Remove-Item -LiteralPath $tempRoot -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+}
+
 function Invoke-ProcessIfcAttributes {
 <#
 Processes IFC files and injects attributes based on configuration.
@@ -924,7 +1025,7 @@ Processes IFC files and injects attributes based on configuration.
     Write-Host "Source folder: $localFolder"
     Write-Host "Processed folder: $processedFolder"
     Write-Host "Attributes file: $attributesFile"
-    Write-Host "IFC injection: PowerShell (append-only)"
+    Write-Host "IFC injection: IfcOpenShell"
 
     function Format-ByteCount {
         param($Bytes)
@@ -1005,7 +1106,7 @@ Processes IFC files and injects attributes based on configuration.
             Name          = $outputName
             WorkbookColumn = $outputName
             SourceColumn  = $sourceName
-            PropertySet   = 'PWattributes'
+            PropertySet   = 'Pset_FileMetadata'
         }
     }
     $attributeDefs = $attributeDefs | Sort-Object RowOrder
@@ -1151,7 +1252,7 @@ Processes IFC files and injects attributes based on configuration.
         Get-FederatableModelExtensions
     }
     else {
-        @('.ifc', '.dwg', '.dgn', '.rvt')
+        @('.ifc', '.rvt')
     }
     $passthroughExtensions = @($federatableExtensions | Where-Object { $_ -ne '.ifc' })
 
@@ -1177,6 +1278,14 @@ Processes IFC files and injects attributes based on configuration.
     if ($ifcFiles.Count -eq 0 -and $passthroughFiles.Count -eq 0) {
         Write-Warning "No federatable files found in source folder: $localFolder"
         return
+    }
+    $ifcPythonPath = $null
+    if ($ifcFiles.Count -gt 0) {
+        if (-not (Get-Command Ensure-FEDAUTOIfcPythonEnvironment -ErrorAction SilentlyContinue)) {
+            throw 'IfcOpenShell support was not loaded. Ensure 051-IfcDataExtractionFunctions.ps1 is available.'
+        }
+        $ifcOpenShellVersion = Get-ConfigValue -Settings $Settings -Name 'IfcOpenShellVersion' -Default '0.8.5'
+        $ifcPythonPath = (Ensure-FEDAUTOIfcPythonEnvironment -IfcOpenShellVersion $ifcOpenShellVersion).PythonPath
     }
     Write-IfcProcessProgress -Status 'Queued' -Current 0 -Total $processActionTotal -FileName ''
 
@@ -1374,7 +1483,7 @@ Processes IFC files and injects attributes based on configuration.
         Write-host   -ForegroundColor White
 
         try {
-            Update-IfcProjectProperties -SourcePath $ifc.FullName -DestinationPath $destinationPath -PropertySets $propertySets -TopLevelName $ifc.Name
+            Update-IfcProjectProperties -SourcePath $ifc.FullName -DestinationPath $destinationPath -PropertySets $propertySets -PythonPath $ifcPythonPath -TopLevelName $ifc.Name
             $processSucceeded = $true
         }
         catch {

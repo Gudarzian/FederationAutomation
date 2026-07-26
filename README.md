@@ -1,36 +1,33 @@
 # Federation Automation
 
-Federation Automation prepares BIM model delivery sets by staging source files, optionally extracting IFC object data, optionally injecting metadata into IFC files, grouping models, building Navisworks federation outputs, and optionally publishing the latest valid federation to Revizto.
+Federation Automation prepares BIM model delivery sets by staging source files, extracting IFC data when required, adding configured IFC metadata, building Navisworks federations, and optionally publishing to Revizto.
 
-## Manual
-
-See `Docs/UserManual.md` for the concise workflow guide and `Docs/Federation-Automation-User-Manual-Friendly.md` for the full user manual.
-
-Project page:
-https://github.com/Gudarzian/FederationAutomation
-
-## Folder Layout
-
-- `Source` contains the PowerShell source scripts and EXE build scripts.
-- `Docs` contains the concise guide, full user manual, and JSON/CSV build notes.
-- `Templates` contains sanitized generic JSON configuration templates.
-- `Exe_Files` contains the runnable package.
-
-## Quick Start
+## Quick start
 
 1. Open `Exe_Files\FA_GUI.exe`.
 2. Open or edit `Exe_Files\Config.json`.
-3. Replace the example source rows and folder settings with project-specific values.
-4. Validate the configuration.
-5. Save, then use `Save and Run`.
+3. Configure the source rows and folder settings for the project.
+4. Use **Validate**, resolve any errors, then use **Save and Run**.
+
+For a script-only deployment, open `PowerShell_Run_Package\Run-GUI.bat` instead.
+
+## Launching and security
+
+The script-only runners use a process-local PowerShell `-ExecutionPolicy Bypass` because unsigned `.ps1` scripts can be blocked by Windows policy. This does not change the computer's permanent policy; run the batch files only from the approved package location.
+
+The current PS2EXE-built EXEs are not Authenticode signed and may occasionally be flagged by antivirus or SmartScreen. Do not disable protection or add a personal exclusion. Send IT/security the alert, tool version, and EXE SHA-256 hash so they can validate the approved release and apply any centrally managed allow rule.
+
+## Package layout
+
+- `Exe_Files` contains the GUI, pipeline executable, configuration, and Navisworks options file.
+- `Templates` contains the sanitized generic configuration template.
+- `Docs` contains the concise and full user guides.
+- `Source` contains the PowerShell source and build scripts for maintainers.
+
+## Guides
+
+Read `Docs\UserManual.md` for the concise workflow guide and `Docs\Federation-Automation-User-Manual-Friendly.md` for detailed settings and troubleshooting information.
 
 ## License
 
-Copyright (c) 2026 Gudarzian
-
-This software is licensed under the PolyForm Noncommercial License 1.0.0. Noncommercial use, copying, modification, and sharing are allowed under the license terms. Commercial use, including selling this software or using it as part of a paid service or product, requires separate permission from the copyright holder.
-
-This is a personal project provided as-is, without warranties or guarantees. Use it carefully and cautiously, entirely at your own risk. The author accepts no responsibility or liability for loss, damage, data loss, interrupted workflows, or other consequences arising from its use. Test with copies and maintain reliable backups.
-
-Full terms:
-https://polyformproject.org/licenses/noncommercial/1.0.0
+Copyright (c) 2026 Gudarzian. Licensed under the PolyForm Noncommercial License 1.0.0. See `LICENSE` for terms.

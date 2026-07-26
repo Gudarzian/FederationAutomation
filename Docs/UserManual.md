@@ -17,6 +17,14 @@ The stages are connected by the folders in Settings.
 
 This means you can run the whole pipeline, or disable stages that are not needed for a particular update.
 
+## Launching and Security Notices
+
+Use `FA_GUI.exe` for normal interactive work. Use `FA_Main.exe` for a command-line run. In a script-only deployment, use the supplied `Run-GUI.bat` or `Run-Main.bat` launcher rather than running or dot-sourcing the `.ps1` files directly.
+
+Some Windows execution policies block unsigned PowerShell scripts. The supplied batch launchers start PowerShell with a process-local `-ExecutionPolicy Bypass`; this does not change the computer's permanent policy, but it also bypasses the script-signature check for that launch. Run them only from the approved tool location and do not use them to run copied or untrusted scripts.
+
+The current EXE releases are built from PowerShell with PS2EXE and are not Authenticode signed. Security products can therefore flag them heuristically, particularly because the tool starts supporting processes and can create a Python environment for IFC extraction. If antivirus or SmartScreen blocks an EXE, do not disable protection or create a personal exclusion. Record the alert, tool version, and EXE SHA-256 hash, then ask IT/security to validate the approved release and apply any required centrally managed allow rule.
+
 ## Selective Running
 
 Use the activation controls in the Settings tab to decide which stages run.

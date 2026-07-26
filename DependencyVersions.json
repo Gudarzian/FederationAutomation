@@ -1,0 +1,5 @@
+{
+  "python": "3.12",
+  "ifcopenshell": "0.8.5",
+  "ps2exe": "1.0.18"
+}

@@ -179,18 +179,19 @@ $compiledContent = $header + "`r`n`r`n" + $buildMetadata + "`r`n`r`n" + $functio
 Set-Content -Path $compiledInput -Value $compiledContent -Encoding utf8
 $inputFile = $compiledInput
 
-# Ensure PS2EXE is available (install if missing)
-$ps2exeCmd = Get-Command -Name Invoke-PS2EXE -ErrorAction SilentlyContinue
-if (-not $ps2exeCmd) {
+# Ensure the tested PS2EXE version is available.
+$ps2exeVersion = '1.0.18'
+$ps2exeModule = Get-Module -ListAvailable -Name ps2exe | Where-Object { $_.Version.ToString() -eq $ps2exeVersion } | Select-Object -First 1
+if (-not $ps2exeModule) {
     try {
-        Install-Module -Name ps2exe -Scope CurrentUser -Force -AllowClobber -ErrorAction Stop
-        Import-Module ps2exe -ErrorAction Stop
-        $ps2exeCmd = Get-Command -Name Invoke-PS2EXE -ErrorAction Stop
+        Install-Module -Name ps2exe -RequiredVersion $ps2exeVersion -Scope CurrentUser -Force -AllowClobber -ErrorAction Stop
     }
     catch {
-        throw "PS2EXE module is required but could not be loaded: $_"
+        throw "PS2EXE $ps2exeVersion is required but could not be installed: $_"
     }
 }
+Import-Module ps2exe -RequiredVersion $ps2exeVersion -ErrorAction Stop
+$ps2exeCmd = Get-Command -Name Invoke-PS2EXE -ErrorAction Stop
 
 # Pick whichever bundling parameter this PS2EXE version supports
 $paramNames = $ps2exeCmd.Parameters.Keys

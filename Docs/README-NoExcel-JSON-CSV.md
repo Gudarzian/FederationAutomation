@@ -42,6 +42,10 @@ Each stage can be selectively run from Settings:
 .\FA_Main.exe Config.json
 ```
 
+For the script-only package, use `Run-GUI.bat` or `Run-Main.bat`. Direct execution or dot-sourcing of unsigned `.ps1` scripts can be blocked by Windows execution policy. The supplied batch launchers use a process-local `-ExecutionPolicy Bypass`, so run them only from the approved package location.
+
+The current PS2EXE-built EXEs are not Authenticode signed and can occasionally be flagged by antivirus or SmartScreen. Do not disable protection or add a personal exclusion. Provide IT/security with the alert, tool version, and EXE SHA-256 hash so they can validate the approved release and apply any centrally managed allow rule.
+
 ## License
 
 Copyright (c) 2026 Gudarzian

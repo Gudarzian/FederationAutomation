@@ -49,6 +49,8 @@ import sys
 import ifcopenshell
 import ifcopenshell.util.element
 
+HEARTBEAT_FILE = ""
+
 
 SKIP_CLASSES = {
     "IfcProject",
@@ -154,6 +156,15 @@ def material_name(product):
     return "; ".join(collect_material_names(material))
 
 
+def heartbeat(phase, count=0, total=0):
+    message = "Phase={}|Count={}|Total={}".format(phase, count, total)
+    if HEARTBEAT_FILE:
+        temporary = HEARTBEAT_FILE + ".tmp"
+        with open(temporary, "w", encoding="utf-8") as handle:
+            handle.write(message)
+        os.replace(temporary, HEARTBEAT_FILE)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--ifc", required=True)
@@ -162,14 +173,19 @@ def main():
     parser.add_argument("--tab-exclusions", default="")
     parser.add_argument("--attribute-inclusions", default="")
     parser.add_argument("--attribute-exclusions", default="")
+    parser.add_argument("--heartbeat-file", default="")
     args = parser.parse_args()
+    global HEARTBEAT_FILE
+    HEARTBEAT_FILE = args.heartbeat_file
 
     tab_inclusions = split_terms(args.tab_inclusions)
     tab_exclusions = split_terms(args.tab_exclusions)
     attribute_inclusions = split_terms(args.attribute_inclusions)
     attribute_exclusions = split_terms(args.attribute_exclusions)
 
+    heartbeat("Opening")
     model = ifcopenshell.open(args.ifc)
+    heartbeat("Indexing")
     products = [
         product
         for product in model.by_type("IfcProduct")
@@ -196,7 +212,8 @@ def main():
             column_keys.add(key)
         row[key] = scalar(value)
 
-    for product in products:
+    heartbeat("Extracting", 0, len(products))
+    for index, product in enumerate(products, start=1):
         global_id = getattr(product, "GlobalId", "") or ""
         product_name = getattr(product, "Name", "") or ""
         product_type_name = type_name(product)
@@ -242,16 +259,21 @@ def main():
                     continue
                 add_filtered(row, source_name, attribute_name, value)
         rows.append(row)
+        if index % 250 == 0:
+            heartbeat("Extracting", index, len(products))
 
     out_dir = os.path.dirname(args.csv)
     if out_dir:
         os.makedirs(out_dir, exist_ok=True)
+    heartbeat("Writing", len(rows), len(products))
     with open(args.csv, "w", encoding="utf-8", newline="") as handle:
         writer = csv.writer(handle)
         writer.writerow([column[0] for column in columns])
         writer.writerow([column[1] for column in columns])
         for row in rows:
             writer.writerow([row.get(column[2], "") for column in columns])
+
+    heartbeat("Completed", len(rows), len(products))
 
     print(json.dumps({
         "IfcPath": args.ifc,
@@ -353,7 +375,15 @@ function Install-FEDAUTOUserPython {
     return $pythonPath
 }
 
+function Get-FEDAUTOIfcPythonPackageVersion {
+    param([Parameter(Mandatory = $true)][string]$PythonPath, [Parameter(Mandatory = $true)][string]$Package)
+    $result = Invoke-FEDAUTOExternalCommand -FilePath $PythonPath -ArgumentList @('-c', ("import importlib.metadata as m;print(m.version('{0}'))" -f $Package))
+    if ($result.ExitCode -ne 0) { return $null }
+    return $result.StdOut.Trim()
+}
+
 function Ensure-FEDAUTOIfcPythonEnvironment {
+    param([string]$IfcOpenShellVersion = '0.8.5')
     $pythonPath = Get-FEDAUTOIfcPythonPath
     if (-not $pythonPath) { $pythonPath = Install-FEDAUTOUserPython }
 
@@ -369,17 +399,16 @@ function Ensure-FEDAUTOIfcPythonEnvironment {
         }
     }
 
-    foreach ($package in @('ifcopenshell')) {
-        $show = Invoke-FEDAUTOExternalCommand -FilePath $venvPython -ArgumentList @('-m','pip','show',$package)
-        if ($show.ExitCode -ne 0) {
-            Write-Host ("Installing Python package '{0}' in the user environment..." -f $package) -ForegroundColor Yellow
-            $pip = Invoke-FEDAUTOExternalCommand -FilePath $venvPython -ArgumentList @('-m','pip','install','--upgrade','pip')
-            if ($pip.ExitCode -ne 0) { throw ("Failed to upgrade pip. {0} {1}" -f $pip.StdOut, $pip.StdErr) }
-            $install = Invoke-FEDAUTOExternalCommand -FilePath $venvPython -ArgumentList @('-m','pip','install',$package)
-            if ($install.ExitCode -ne 0) { throw ("Failed to install Python package '{0}'. {1} {2}" -f $package, $install.StdOut, $install.StdErr) }
-        }
+    if ([string]::IsNullOrWhiteSpace($IfcOpenShellVersion)) { $IfcOpenShellVersion = '0.8.5' }
+    $installedVersion = Get-FEDAUTOIfcPythonPackageVersion -PythonPath $venvPython -Package 'ifcopenshell'
+    if ($installedVersion -ne $IfcOpenShellVersion) {
+        Write-Host ("Installing pinned IfcOpenShell {0} in the user environment..." -f $IfcOpenShellVersion) -ForegroundColor Yellow
+        $install = Invoke-FEDAUTOExternalCommand -FilePath $venvPython -ArgumentList @('-m','pip','install','--upgrade',("ifcopenshell=={0}" -f $IfcOpenShellVersion))
+        if ($install.ExitCode -ne 0) { throw ("Failed to install IfcOpenShell {0}. {1} {2}" -f $IfcOpenShellVersion, $install.StdOut, $install.StdErr) }
+        $installedVersion = Get-FEDAUTOIfcPythonPackageVersion -PythonPath $venvPython -Package 'ifcopenshell'
+        if ($installedVersion -ne $IfcOpenShellVersion) { throw "IfcOpenShell version verification failed. Expected $IfcOpenShellVersion; found '$installedVersion'." }
     }
-    return $venvPython
+    return [pscustomobject]@{ PythonPath=$venvPython; IfcOpenShellVersion=$installedVersion }
 }
 
 function Export-IfcObjectAttributesCsvPython {
@@ -391,20 +420,27 @@ function Export-IfcObjectAttributesCsvPython {
         [string]$TabInclusions = '',
         [string]$TabExclusions = '',
         [string]$AttributeInclusions = '',
-        [string]$AttributeExclusions = ''
+        [string]$AttributeExclusions = '',
+        [int]$StallWarningMinutes = 15,
+        [int]$StallTimeoutMinutes = 30
     )
 
     $tempRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("FEDAUTO-IfcExtract-{0}" -f ([guid]::NewGuid().ToString('N')))
     $scriptPath = Join-Path $tempRoot 'extract_ifc_attributes.py'
+    $heartbeatPath = Join-Path $tempRoot 'worker-heartbeat.txt'
+    $temporaryCsvPath = Join-Path (Split-Path -Parent $CsvPath) ('.{0}.{1}.tmp' -f ([IO.Path]::GetFileName($CsvPath)), [guid]::NewGuid().ToString('N'))
     try {
         New-Item -ItemType Directory -Path $tempRoot -Force | Out-Null
         [System.IO.File]::WriteAllText($scriptPath, (Get-FEDAUTOIfcPythonExtractorScript), [System.Text.UTF8Encoding]::new($false))
-        $arguments = @($scriptPath, '--ifc', $IfcPath, '--csv', $CsvPath)
+        $arguments = @($scriptPath, '--ifc', $IfcPath, '--csv', $temporaryCsvPath, '--heartbeat-file', $heartbeatPath)
         if (-not [string]::IsNullOrWhiteSpace($TabInclusions)) { $arguments += @('--tab-inclusions', $TabInclusions) }
         if (-not [string]::IsNullOrWhiteSpace($TabExclusions)) { $arguments += @('--tab-exclusions', $TabExclusions) }
         if (-not [string]::IsNullOrWhiteSpace($AttributeInclusions)) { $arguments += @('--attribute-inclusions', $AttributeInclusions) }
         if (-not [string]::IsNullOrWhiteSpace($AttributeExclusions)) { $arguments += @('--attribute-exclusions', $AttributeExclusions) }
-        $result = Invoke-FEDAUTOExternalCommand -FilePath $PythonPath -ArgumentList $arguments
+        $result = Invoke-FEDAUTOIfcExtractionWorker -FilePath $PythonPath -ArgumentList $arguments -HeartbeatPath $heartbeatPath -StallWarningMinutes $StallWarningMinutes -StallTimeoutMinutes $StallTimeoutMinutes
+        if ($result.Stalled) {
+            throw ("IFC extraction worker stalled and was stopped. Last phase: {0}; last heartbeat: {1}; CPU activity: {2}s; I/O activity: {3} bytes." -f $result.LastPhase, $result.LastHeartbeatUtc, $result.CpuActivitySeconds, $result.IoActivityBytes)
+        }
         if ($result.ExitCode -ne 0) {
             throw ("Python IFC extraction failed. {0} {1}" -f $result.StdOut, $result.StdErr)
         }
@@ -412,10 +448,96 @@ function Export-IfcObjectAttributesCsvPython {
         if ([string]::IsNullOrWhiteSpace($jsonText)) {
             throw 'Python IFC extraction did not return a summary.'
         }
-        return ($jsonText | ConvertFrom-Json)
+        if (-not (Test-Path -LiteralPath $temporaryCsvPath -PathType Leaf)) { throw 'Python IFC extraction completed without creating a temporary CSV.' }
+        Move-Item -LiteralPath $temporaryCsvPath -Destination $CsvPath -Force
+        $summary = $jsonText | ConvertFrom-Json
+        $summary | Add-Member -NotePropertyName WorkerLastPhase -NotePropertyValue $result.LastPhase -Force
+        return $summary
     }
     finally {
+        if (Test-Path -LiteralPath $temporaryCsvPath) { Remove-Item -LiteralPath $temporaryCsvPath -Force -ErrorAction SilentlyContinue }
         if (Test-Path $tempRoot) { Remove-Item -LiteralPath $tempRoot -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+}
+
+function Invoke-FEDAUTOIfcExtractionWorker {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)][string]$FilePath,
+        [Parameter(Mandatory = $true)][string[]]$ArgumentList,
+        [Parameter(Mandatory = $true)][string]$HeartbeatPath,
+        [int]$StallWarningMinutes = 15,
+        [int]$StallTimeoutMinutes = 30
+    )
+
+    $warningMinutes = [Math]::Max(1, $StallWarningMinutes)
+    $timeoutMinutes = [Math]::Max($warningMinutes + 1, $StallTimeoutMinutes)
+    $startInfo = New-Object System.Diagnostics.ProcessStartInfo
+    $startInfo.FileName = $FilePath
+    $startInfo.Arguments = (@($ArgumentList | ForEach-Object {
+        $text = if ($null -eq $_) { '' } else { $_.ToString() }
+        if ($text -notmatch '[\s"]') { $text } else { '"' + ($text -replace '"', '\"') + '"' }
+    }) -join ' ')
+    $startInfo.UseShellExecute = $false
+    $startInfo.RedirectStandardOutput = $true
+    $startInfo.RedirectStandardError = $true
+    $state = [hashtable]::Synchronized(@{
+        LastHeartbeatUtc = [DateTime]::UtcNow
+        LastPhase = 'Starting'
+        WarningWritten = $false
+    })
+    $process = New-Object System.Diagnostics.Process
+    $process.StartInfo = $startInfo
+    if (-not $process.Start()) { throw "Unable to start IFC extraction worker '$FilePath'." }
+    $stdoutTask = $process.StandardOutput.ReadToEndAsync()
+    $stderrTask = $process.StandardError.ReadToEndAsync()
+    $previousCpu = $process.TotalProcessorTime
+    $previousIo = [long]($process.IOReadBytes + $process.IOWriteBytes)
+    $inactiveSamples = 0
+    $stalled = $false
+    $cpuActivity = 0.0
+    $ioActivity = [long]0
+    while (-not $process.HasExited) {
+        Start-Sleep -Seconds 5
+        $process.Refresh()
+        if (Test-Path -LiteralPath $HeartbeatPath -PathType Leaf) {
+            try {
+                $heartbeat = Get-Content -LiteralPath $HeartbeatPath -Raw -ErrorAction Stop
+                if ($heartbeat -match '^Phase=([^|]+)') { $state.LastPhase = $Matches[1] }
+                $state.LastHeartbeatUtc = (Get-Item -LiteralPath $HeartbeatPath).LastWriteTimeUtc
+            }
+            catch {
+                # The worker atomically replaces this file, so a read can briefly race that replacement.
+            }
+        }
+        $heartbeatAge = ([DateTime]::UtcNow - [DateTime]$state.LastHeartbeatUtc).TotalMinutes
+        $currentCpu = $process.TotalProcessorTime
+        $currentIo = [long]($process.IOReadBytes + $process.IOWriteBytes)
+        $cpuActivity = [Math]::Max(0, ($currentCpu - $previousCpu).TotalSeconds)
+        $ioActivity = [Math]::Max(0, $currentIo - $previousIo)
+        $previousCpu = $currentCpu
+        $previousIo = $currentIo
+        if ($heartbeatAge -ge $warningMinutes -and -not $state.WarningWritten) {
+            Write-Warning ("IFC extraction worker is slow: no heartbeat for {0:N1} minute(s); phase '{1}'; CPU activity {2:N2}s and I/O activity {3} bytes in the last sample. Continuing while activity is detected." -f $heartbeatAge, $state.LastPhase, $cpuActivity, $ioActivity)
+            $state.WarningWritten = $true
+        }
+        if ($heartbeatAge -ge $timeoutMinutes -and $cpuActivity -lt 0.2 -and $ioActivity -lt 1048576) { $inactiveSamples++ } else { $inactiveSamples = 0 }
+        if ($inactiveSamples -ge 3) {
+            $stalled = $true
+            Write-Warning ("IFC extraction worker stalled and will be stopped: no heartbeat for {0:N1} minute(s); phase '{1}'; negligible CPU/I/O across {2} samples." -f $heartbeatAge, $state.LastPhase, $inactiveSamples)
+            try { $process.Kill() } catch { Write-Warning "Unable to terminate stalled IFC extraction worker: $_" }
+        }
+    }
+    $process.WaitForExit()
+    return [pscustomobject]@{
+        ExitCode = $process.ExitCode
+        StdOut = $stdoutTask.GetAwaiter().GetResult()
+        StdErr = $stderrTask.GetAwaiter().GetResult()
+        Stalled = $stalled
+        LastPhase = $state.LastPhase
+        LastHeartbeatUtc = $state.LastHeartbeatUtc
+        CpuActivitySeconds = $cpuActivity
+        IoActivityBytes = $ioActivity
     }
 }
 
@@ -438,10 +560,11 @@ function Write-FEDAUTOIfcExtractionFileResult {
         [string]$FileName,
         [double]$Seconds,
         [int]$ObjectCount = 0,
-        [int]$AttributeCount = 0
+        [int]$AttributeCount = 0,
+        [string]$Reason = ''
     )
     $timestamp = (Get-Date).ToString('yyyy-MM-dd HH:mm:ss')
-    Write-Host ("IFC_DATA_EXTRACTION_FILE|Time={0}|Index={1}|Total={2}|Status={3}|Seconds={4}|Objects={5}|Attributes={6}|File={7}" -f $timestamp, $Index, $Total, $Status, ([Math]::Round($Seconds, 2)), $ObjectCount, $AttributeCount, $FileName)
+    Write-Host ("IFC_DATA_EXTRACTION_FILE|Time={0}|Index={1}|Total={2}|Status={3}|Seconds={4}|Objects={5}|Attributes={6}|Reason={7}|File={8}" -f $timestamp, $Index, $Total, $Status, ([Math]::Round($Seconds, 2)), $ObjectCount, $AttributeCount, $Reason, $FileName)
 }
 
 function Get-FEDAUTOIfcExtractionRuleTerms {
@@ -592,7 +715,7 @@ function ConvertTo-FEDAUTOIfcRelativePath {
             return $fullPath.Substring($fullRoot.Length + 1)
         }
     }
-    catch { }
+    catch { Write-Verbose "Could not convert IFC path '$Path' to a path relative to '$RootFolder'. $($_.Exception.Message)" }
     return $Path
 }
 
@@ -632,6 +755,18 @@ function Invoke-IfcDataExtraction {
     if ($null -ne $skipIfCurrentValue -and $skipIfCurrentValue.ToString().Trim().ToLowerInvariant() -in @('no','n','false','0','ignore')) {
         $skipIfCsvIsCurrent = $false
     }
+    $missingSourceFileSuffix = (Get-ConfigValue -Settings $Settings -Name 'MissingSourceFileSuffix' -Default '_MISSING').ToString().Trim()
+    $missingSourceFileAction = (Get-ConfigValue -Settings $Settings -Name 'MissingSourceFileAction' -Default 'Do nothing').ToString().Trim()
+    $excludeMissingSourceFilesValue = Get-ConfigValue -Settings $Settings -Name 'ExcludeMissingSourceFiles' -Default 'Yes'
+    $excludeMissingSourceFiles = $missingSourceFileAction.ToLowerInvariant() -eq 'rename' -and ($null -eq $excludeMissingSourceFilesValue -or $excludeMissingSourceFilesValue.ToString().Trim().ToLowerInvariant() -notin @('no','n','false','0','ignore'))
+    $stallWarningMinutes = 15
+    $stallTimeoutMinutes = 30
+    [void][int]::TryParse((Get-ConfigValue -Settings $Settings -Name 'IfcDataExtractionStallWarningMinutes' -Default '15').ToString(), [ref]$stallWarningMinutes)
+    [void][int]::TryParse((Get-ConfigValue -Settings $Settings -Name 'IfcDataExtractionStallTimeoutMinutes' -Default '30').ToString(), [ref]$stallTimeoutMinutes)
+    $stallWarningMinutes = [Math]::Max(1, $stallWarningMinutes)
+    $stallTimeoutMinutes = [Math]::Max($stallWarningMinutes + 1, $stallTimeoutMinutes)
+    $failurePolicy = (Get-ConfigValue -Settings $Settings -Name 'IfcDataExtractionFailurePolicy' -Default 'Continue').ToString().Trim()
+    if ($failurePolicy.ToLowerInvariant() -notin @('continue','failpipeline')) { $failurePolicy = 'Continue' }
 
     if (-not (Test-Path $sourceFolder -PathType Container)) {
         throw "IFC data extraction source folder not found: $sourceFolder"
@@ -666,6 +801,8 @@ function Invoke-IfcDataExtraction {
     Write-Host "Extraction engine: $engineDisplay"
     Write-Host ("Maximum IFC file size: {0} MB" -f $maxFileSizeDisplayMb)
     Write-Host ("Skip extraction when CSV is current: {0}" -f $(if ($skipIfCsvIsCurrent -and -not $forceExtraction) { 'Yes' } elseif ($forceExtraction) { 'No (forced)' } else { 'No' }))
+    Write-Host ("Exclude missing source files: {0}" -f $(if ($excludeMissingSourceFiles -and -not [string]::IsNullOrWhiteSpace($missingSourceFileSuffix)) { "Yes (suffix: $missingSourceFileSuffix)" } else { 'No' }))
+    Write-Host ("Worker stall watchdog: warning {0} minute(s); timeout {1} minute(s); failure policy {2}." -f $stallWarningMinutes, $stallTimeoutMinutes, $failurePolicy)
     $activeRuleCount = @($IfcDataExtractionRules | Where-Object { Test-FEDAUTOIfcExtractionRuleEnabled -Rule $_ }).Count
     Write-Host ("IFC data extraction rules: {0} active rule(s)" -f $activeRuleCount)
     if ($activeRuleCount -eq 0) {
@@ -673,6 +810,13 @@ function Invoke-IfcDataExtraction {
     }
 
     $allIfcFiles = @(Get-ChildItem -Path $sourceFolder -Filter '*.ifc' -File)
+    if ($excludeMissingSourceFiles -and -not [string]::IsNullOrWhiteSpace($missingSourceFileSuffix)) {
+        $missingIfcFiles = @($allIfcFiles | Where-Object { $_.BaseName.EndsWith($missingSourceFileSuffix, [System.StringComparison]::OrdinalIgnoreCase) })
+        $allIfcFiles = @($allIfcFiles | Where-Object { -not $_.BaseName.EndsWith($missingSourceFileSuffix, [System.StringComparison]::OrdinalIgnoreCase) })
+        if ($missingIfcFiles.Count -gt 0) {
+            Write-Host ("Excluded {0} IFC file(s) marked missing with suffix '{1}'." -f $missingIfcFiles.Count, $missingSourceFileSuffix) -ForegroundColor Yellow
+        }
+    }
     $selectedIfcFiles = New-Object System.Collections.Generic.List[object]
     $ruleSkippedCount = 0
     $ruleConflictCount = 0
@@ -696,7 +840,12 @@ function Invoke-IfcDataExtraction {
     $failures = New-Object System.Collections.Generic.List[object]
     $eligibleFileCount = @($selectedIfcFiles | Where-Object { $_.File.Length -le $maxFileSizeBytes }).Count
     $pythonPath = $null
-    if ($eligibleFileCount -gt 0) { $pythonPath = Ensure-FEDAUTOIfcPythonEnvironment }
+    $ifcOpenShellVersion = Get-ConfigValue -Settings $Settings -Name 'IfcOpenShellVersion' -Default '0.8.5'
+    if ($eligibleFileCount -gt 0) {
+        $pythonEnvironment = Ensure-FEDAUTOIfcPythonEnvironment -IfcOpenShellVersion $ifcOpenShellVersion
+        $pythonPath = $pythonEnvironment.PythonPath
+        $ifcOpenShellVersion = $pythonEnvironment.IfcOpenShellVersion
+    }
     $processedFileIndex = 0
     foreach ($ifcEntry in $selectedIfcFiles) {
         $processedFileIndex++
@@ -756,7 +905,7 @@ function Invoke-IfcDataExtraction {
             Write-FEDAUTOIfcExtractionProgress -Current ($processedFileIndex - 1) -Total $selectedIfcFiles.Count -Status 'Starting' -FileName $ifc.Name
             Write-Host ("Extracting IFC data: {0}" -f $ifc.Name)
             $fileTimer = [System.Diagnostics.Stopwatch]::StartNew()
-            $result = Export-IfcObjectAttributesCsvPython -IfcPath $ifc.FullName -CsvPath $csvPath -PythonPath $pythonPath -TabInclusions $selection.TabInclusions -TabExclusions $selection.TabExclusions -AttributeInclusions $selection.AttributeInclusions -AttributeExclusions $selection.AttributeExclusions
+            $result = Export-IfcObjectAttributesCsvPython -IfcPath $ifc.FullName -CsvPath $csvPath -PythonPath $pythonPath -TabInclusions $selection.TabInclusions -TabExclusions $selection.TabExclusions -AttributeInclusions $selection.AttributeInclusions -AttributeExclusions $selection.AttributeExclusions -StallWarningMinutes $stallWarningMinutes -StallTimeoutMinutes $stallTimeoutMinutes
             $fileTimer.Stop()
             $result | Add-Member -NotePropertyName Seconds -NotePropertyValue ([Math]::Round($fileTimer.Elapsed.TotalSeconds, 2)) -Force
             $result | Add-Member -NotePropertyName IfcRelativePath -NotePropertyValue $ifcRelativePath -Force
@@ -773,9 +922,12 @@ function Invoke-IfcDataExtraction {
             Write-Host ("  Exported {0} object row(s), {1} attribute column(s) in {2}s: {3}" -f $result.ObjectCount, $result.AttributeCount, ([Math]::Round($fileTimer.Elapsed.TotalSeconds, 2)), $csvPath)
         }
         catch {
-            $failures.Add([pscustomobject]@{ IfcPath=$ifc.FullName; IfcRelativePath=$ifcRelativePath; RuleIndex=$selection.RuleIndex; RuleFilterHash=$selection.RuleFilterHash; Error=$_.ToString() }) | Out-Null
+            $failureReason = if ($_.Exception.Message -like 'IFC extraction worker stalled and was stopped*') { 'StallTimeout' } else { 'WorkerError' }
+            $failureSeconds = if ($fileTimer) { $fileTimer.Elapsed.TotalSeconds } else { 0 }
+            $failures.Add([pscustomobject]@{ IfcPath=$ifc.FullName; IfcRelativePath=$ifcRelativePath; SizeBytes=$ifc.Length; RuleIndex=$selection.RuleIndex; RuleFilterHash=$selection.RuleFilterHash; Reason=$failureReason; Error=$_.ToString(); DurationSeconds=[Math]::Round($failureSeconds,2); Timestamp=(Get-Date).ToUniversalTime().ToString('o') }) | Out-Null
             Write-FEDAUTOIfcExtractionProgress -Current $processedFileIndex -Total $selectedIfcFiles.Count -Status 'Failed' -FileName $ifc.Name
-            Write-Warning ("Failed to extract IFC data from '{0}': {1}" -f $ifc.Name, $_)
+            Write-FEDAUTOIfcExtractionFileResult -Index $processedFileIndex -Total $selectedIfcFiles.Count -Status $failureReason -FileName $ifc.Name -Seconds $failureSeconds -Reason $_.Exception.Message
+            Write-Warning ("Failed to extract IFC data from '{0}' ({1}): {2}" -f $ifc.Name, $failureReason, $_)
         }
     }
 
@@ -790,6 +942,11 @@ function Invoke-IfcDataExtraction {
         MaxFileSizeMB = $maxFileSizeDisplayMb
         SkipIfCsvIsCurrent = $skipIfCsvIsCurrent
         ForceExtraction = $forceExtraction
+        StallWarningMinutes = $stallWarningMinutes
+        StallTimeoutMinutes = $stallTimeoutMinutes
+        FailurePolicy = $failurePolicy
+        IfcOpenShellVersion = $ifcOpenShellVersion
+        PythonPath = $pythonPath
         RuleSkippedInputCount = $ruleSkippedCount
         RuleConflictCount = $ruleConflictCount
         DurationSeconds = $durationSeconds
@@ -803,6 +960,13 @@ function Invoke-IfcDataExtraction {
     }
     $summary | ConvertTo-Json -Depth 8 | Set-Content -Path $summaryPath -Encoding UTF8
     Write-Host ("IFC data extraction exported {0} file(s), skipped {1}, failed {2}. Duration: {3}s." -f $exports.Count, $skipped.Count, $failures.Count, $durationSeconds)
+    if ($failures.Count -gt 0) {
+        Write-Host 'Failed IFC extraction files:' -ForegroundColor Yellow
+        foreach ($failure in $failures) { Write-Host ("  - {0} - {1}" -f ([IO.Path]::GetFileName($failure.IfcPath)), $failure.Reason) -ForegroundColor Yellow }
+    }
     Write-Host "=== END IFC Data Extraction ==="
+    if ($failures.Count -gt 0 -and $failurePolicy -eq 'FailPipeline') {
+        throw ("IFC data extraction failed for {0} file(s) and IfcDataExtractionFailurePolicy is FailPipeline. See '{1}'." -f $failures.Count, $summaryPath)
+    }
     return [pscustomobject]$summary
 }

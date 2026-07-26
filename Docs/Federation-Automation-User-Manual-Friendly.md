@@ -109,6 +109,14 @@ The `Run` tab shows the active stage, progress bar, live activity, and a short r
 
 Checkboxes in the GUI tables toggle with one click. This applies to all checkbox columns in the Download, Attributes, Data Extraction, Federation, and Wildcard Selection grids.
 
+## 7. Launching and Security Notices
+
+For normal use, start `FA_GUI.exe`. For an unattended or command-line run, start `FA_Main.exe` with the required configuration. In the script-only package, use `Run-GUI.bat` or `Run-Main.bat`; directly running or dot-sourcing the `.ps1` scripts can be blocked by the Windows execution policy because the scripts are unsigned.
+
+The batch launchers use PowerShell's `-ExecutionPolicy Bypass` setting for that one process. It does not permanently change Windows policy, but it does bypass the script-signature check. Run the launchers only from the approved package location; never use them with copied or untrusted scripts.
+
+`FA_GUI.exe` and `FA_Main.exe` are built with PS2EXE and are currently not Authenticode signed. Antivirus or SmartScreen can flag this type of executable heuristically, especially because the tool starts supporting processes and can create a Python environment for IFC extraction. If this happens, do not disable antivirus protection or add a personal exclusion. Keep the alert details, tool version, and EXE SHA-256 hash, then send them to IT/security so they can validate the approved release and, if appropriate, apply a centrally managed allow rule.
+
 ## 7. Running From PowerShell
 
 From the folder containing the EXE:
@@ -161,8 +169,6 @@ The stages pass files through the configured folders.
 Supported federation input extensions are:
 
 - `.ifc`
-- `.dwg`
-- `.dgn`
 - `.rvt`
 - `.nwc`
 
@@ -280,7 +286,7 @@ The output of this stage is:
 - model files in `SourceFolder`
 - `PWAttributes.csv` or your configured `AttributesFile`
 - optional `Deleted_files.csv` when old staged files are safely moved aside
-- the `deleted` folder beside `SourceFolder`
+- the `deleted` folder beside `SourceFolder` when `MissingSourceFileAction` is `Relocate`
 
 Deleted-file cleanup is skipped when some read-folder searches fail, so the tool does not remove local files based on an incomplete source search.
 
@@ -362,7 +368,7 @@ For IFC files, the process:
 - optionally adds filename-derived values into `FileName_sections_Descriptions`
 - writes the processed IFC to `ProcessedFolder`
 
-For non-IFC federatable files, such as `.dwg`, `.dgn`, `.rvt`, and `.nwc`, the process copies them through to `ProcessedFolder` so federation can use one clean input folder.
+For non-IFC federatable files, such as `.rvt` and `.nwc`, the process copies them through to `ProcessedFolder` so federation can use one clean input folder.
 
 The process is change-aware. It writes:
 
