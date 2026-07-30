@@ -447,8 +447,9 @@ Resolves a support file path, extracting embedded resources when needed.
         Select-Object -First 1
     if (-not $resourceName) { return $candidate }
 
-    $supportRoot = if (-not [string]::IsNullOrWhiteSpace($env:LOCALAPPDATA)) { $env:LOCALAPPDATA } else { $env:TEMP }
-    $tempDir = Join-Path $supportRoot "Federation-Automation\SupportFiles"
+    # Keep extracted packaged resources with this executable so different
+    # portable copies cannot overwrite or load one another's support files.
+    $tempDir = Join-Path $rootPath 'LocalData\SupportFiles'
     if (-not (Test-Path $tempDir)) {
         New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
     }

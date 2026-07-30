@@ -20,6 +20,7 @@ The current PS2EXE-built EXEs are not Authenticode signed and may occasionally b
 ## Package layout
 
 - `Exe_Files` contains the GUI, pipeline executable, configuration, and Navisworks options file.
+- `Exe_Files\LocalData` is created at runtime and stores state and support reports for that specific tool copy. Do not copy it between projects.
 - `Templates` contains the sanitized generic configuration template.
 - `Docs` contains the concise and full user guides.
 - `Source` contains the PowerShell source and build scripts for maintainers.

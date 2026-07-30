@@ -118,7 +118,7 @@ foreach ($path in $includePaths) {
     $dest = Join-Path $bundleDir (Split-Path $path -Leaf)
     Copy-Item -Path $path -Destination $dest -Force
     $leaf = Split-Path $dest -Leaf
-    $target = "%LOCALAPPDATA%\\Federation-Automation\\SupportFiles\\$leaf"
+    $target = "LocalData\\SupportFiles\\$leaf"
     $stagedIncludes[$target] = $dest
 }
 

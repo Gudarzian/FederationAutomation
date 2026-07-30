@@ -156,7 +156,8 @@ function Get-FEDAUTOApplicationBasePath {
     return (Get-Location).ProviderPath
 }
 $basePath = Get-FEDAUTOApplicationBasePath
-$guiStateDirectory = Join-Path $env:LOCALAPPDATA 'Federation-Automation'
+$localDataDirectory = Join-Path $basePath 'LocalData'
+$guiStateDirectory = $localDataDirectory
 $guiStatePath = Join-Path $guiStateDirectory 'GuiState.json'
 
 function Remove-FEDAUTOStaleTemporaryFiles {
@@ -1557,7 +1558,7 @@ function Show-FEDAUTOPreflightReport {
 function New-FEDAUTOIssueReport {
     param([Parameter(Mandatory = $true)]$Window)
     $report = Invoke-FEDAUTOConfigurationPreflight -Window $Window
-    $root = Join-Path $env:LOCALAPPDATA 'Federation-Automation\IssueReports'
+    $root = Join-Path $localDataDirectory 'IssueReports'
     $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
     $folder = Join-Path $root "Report-$stamp"
     New-Item -Path $folder -ItemType Directory -Force | Out-Null

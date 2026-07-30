@@ -87,7 +87,7 @@ Needed only for specific stages:
 
 - ProjectWise source rows require ProjectWise PowerShell commands such as `New-PWLogin`, `Get-PWDocumentsBySearch`, `Get-PWDocumentsByGUIDs`, and `CheckOut-PWDocuments`. The script checks for them but does not install them.
 - Navisworks federation requires Autodesk Navisworks Manage. If `NavisworksVersion` is blank, the script tries to detect the highest installed version.
-- IFC data extraction requires Python and `ifcopenshell`. If Python is not found, the script tries a current-user Python install through `winget`, then creates a user environment under `%LOCALAPPDATA%\Federation-Automation\PythonEnv`.
+- IFC data extraction requires Python and `ifcopenshell`. If Python is not found, the script tries a current-user Python install through `winget`, then creates a shared user environment under `%LOCALAPPDATA%\Federation-Automation\PythonEnv`.
 - Revizto publishing requires `C:\Program Files\Revizto SA\Revizto5\Service\ReviztoConsole.exe` and a valid `ReviztoPublishCode`.
 
 ## 6. Quick Start With the GUI
@@ -461,7 +461,7 @@ The GUI has several checks that are worth using before a long run.
 | `Preview Matches` | Checks active download rows and shows local/source matches where possible. |
 | `Preview Grouping` | Shows planned naming-convention groups or wildcard rule matches before Navisworks runs. |
 | `Preflight` | Saves the JSON, checks folders, runtime files, Navisworks, Python, ProjectWise commands, disk space, and grid validation. |
-| `Report Issue` | Creates a support zip under `%LOCALAPPDATA%\Federation-Automation\IssueReports` and asks you to email it to `gudarz@gmail.com`. |
+| `Report Issue` | Creates a support zip in `LocalData\IssueReports` beside the executable and asks you to email it to `gudarz@gmail.com`. |
 | `Save and Run` | Saves JSON, runs preflight with folder creation, then starts `FA_Main.exe`. |
 | `Cancel Run` | Appears only while the pipeline is active. After confirmation, it stops `FA_Main.exe` and its child processes, including a Navisworks process started by that run. |
 

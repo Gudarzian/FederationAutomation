@@ -1,0 +1,4 @@
+# Per-copy runtime state and diagnostic reports.
+Exe_Files/LocalData/
+Source/LocalData/
+Source/BuildVersions.json

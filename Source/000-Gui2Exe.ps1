@@ -1,17 +1,23 @@
 <# Builds the self-contained GUI launcher. #>
 [CmdletBinding()]
-param([string]$OutputFile)
+param(
+    [string]$OutputFile,
+    [string]$PipelineFile
+)
 
 if ($PSVersionTable.PSEdition -ne 'Desktop') {
-    & (Join-Path $env:WINDIR 'System32\WindowsPowerShell\v1.0\powershell.exe') -NoProfile -File $PSCommandPath -OutputFile $OutputFile
+    $relaunchArgs = @('-NoProfile', '-File', $PSCommandPath)
+    if ($OutputFile) { $relaunchArgs += @('-OutputFile', $OutputFile) }
+    if ($PipelineFile) { $relaunchArgs += @('-PipelineFile', $PipelineFile) }
+    & (Join-Path $env:WINDIR 'System32\WindowsPowerShell\v1.0\powershell.exe') @relaunchArgs
     exit $LASTEXITCODE
 }
 $basePath = Split-Path -Parent $PSCommandPath
 if (-not $OutputFile) { $OutputFile = Join-Path $basePath 'FA_GUI.exe' }
 $inputFile = Join-Path $basePath '007-Gui.ps1'
-$pipelineFile = Join-Path $basePath 'FA_Main.exe'
+$pipelineFile = if ($PipelineFile) { $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($PipelineFile) } else { Join-Path $basePath 'FA_Main.exe' }
 if (-not (Test-Path -LiteralPath $pipelineFile -PathType Leaf)) {
-    throw "Pipeline executable not found: $pipelineFile. Build it with 000-2Exe.ps1 before building the GUI launcher."
+    throw "Pipeline executable not found: $pipelineFile. Build it with 000-2Exe.ps1 or provide an existing executable with -PipelineFile."
 }
 
 function New-FEDAUTOBuildVersion {
@@ -105,7 +111,7 @@ $resources = @{}
 foreach ($file in '012-SharedFunctions.Ps1','013-ConfigFunctions.Ps1','041-FederationFunctions.Ps1') {
     $path = Join-Path $basePath $file
     if (-not (Test-Path $path)) { throw "Support file not found: $path" }
-    $resources["%APPDATA%\FEDAUTO\$file"] = $path
+    $resources["LocalData\SupportFiles\$file"] = $path
 }
 $command = Get-Command Invoke-PS2EXE
 $resourceParameter = if ($command.Parameters.ContainsKey('ResourceFile')) { 'ResourceFile' } elseif ($command.Parameters.ContainsKey('Include')) { 'Include' } elseif ($command.Parameters.ContainsKey('embedFiles')) { 'embedFiles' } else { $null }
