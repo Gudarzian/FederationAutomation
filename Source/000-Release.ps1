@@ -28,6 +28,7 @@ $releaseFiles = @(
     @{ Source='000-Gui2Exe.ps1'; Destination='GitHub_Library\Source\000-Gui2Exe.ps1' },
     @{ Source='000-Release.ps1'; Destination='GitHub_Library\Source\000-Release.ps1' },
     @{ Source='000-BuildNavisworksVisualStylePlugin.ps1'; Destination='GitHub_Library\Source\000-BuildNavisworksVisualStylePlugin.ps1' },
+    @{ Source='ThirdParty\Navisworks\2027\Autodesk.Navisworks.Api.dll'; Destination='GitHub_Library\Source\ThirdParty\Navisworks\2027\Autodesk.Navisworks.Api.dll' },
     @{ Source='006-Main.ps1'; Destination='GitHub_Library\Source\006-Main.ps1' },
     @{ Source='007-Gui.ps1'; Destination='GitHub_Library\Source\007-Gui.ps1' },
     @{ Source='011-FunctionsDepository.Ps1'; Destination='GitHub_Library\Source\011-FunctionsDepository.Ps1' },

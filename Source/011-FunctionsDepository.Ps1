@@ -30,6 +30,27 @@ function Resolve-FEDAUTOInstalledNavisworksApiPath {
         [string]$Version
     )
 
+    # The repository carries the reference assembly needed to compile the
+    # visual-style add-in.  It is intentionally used before an installed copy:
+    # rebuilding the EXEs must not require Navisworks on the build computer.
+    $bundledRoot = Join-Path $basePath 'ThirdParty\Navisworks'
+    if (-not [string]::IsNullOrWhiteSpace($Version)) {
+        $bundledApiPath = Join-Path (Join-Path $bundledRoot $Version) 'Autodesk.Navisworks.Api.dll'
+        if (Test-Path -LiteralPath $bundledApiPath -PathType Leaf) {
+            return $bundledApiPath
+        }
+    }
+    elseif (Test-Path -LiteralPath $bundledRoot -PathType Container) {
+        $bundledApiPath = Get-ChildItem -LiteralPath $bundledRoot -Directory -ErrorAction SilentlyContinue |
+            Sort-Object @{ Expression = { [int]($_.Name -replace '\D+', '') }; Descending = $true } |
+            ForEach-Object { Join-Path $_.FullName 'Autodesk.Navisworks.Api.dll' } |
+            Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } |
+            Select-Object -First 1
+        if ($bundledApiPath) {
+            return $bundledApiPath
+        }
+    }
+
     $autodeskRoot = 'C:\Program Files\Autodesk'
     if (-not [string]::IsNullOrWhiteSpace($Version)) {
         $requestedApiPath = Join-Path (Join-Path $autodeskRoot "Navisworks Manage $Version") 'Autodesk.Navisworks.Api.dll'
@@ -52,7 +73,7 @@ function Resolve-FEDAUTOInstalledNavisworksApiPath {
         }
     }
 
-    throw "No Navisworks Manage API assembly was found under $autodeskRoot. Install Navisworks Manage or pass -NavisworksVersion for an installed version."
+    throw "No compatible Navisworks API assembly was found. Expected a bundled reference under '$bundledRoot' or an installed Navisworks Manage API under '$autodeskRoot'."
 }
 
 function Get-FEDAUTOVisualStylePluginProjectXml {

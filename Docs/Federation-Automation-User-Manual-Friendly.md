@@ -571,7 +571,7 @@ Use this when you want ordered output rules.
 | Attribute CSV has no `FileName` | Add `FileName` or `Filename`; processing cannot match IFC files without it. |
 | Python not detected | Install Python manually or allow the user-level `winget` install. Locked-down machines may block this. |
 | IFC extraction skips files | Check max file size and whether existing CSV files are already current. Use `Force` if needed. |
-| Navisworks not found | Install Navisworks Manage or correct `NavisworksVersion`. |
+| Navisworks not found | Install Navisworks Manage or correct `NavisworksVersion`. The bundled API DLL allows rebuilding the EXEs without Navisworks, but Navisworks Manage is still required to create NWD/NWF outputs. |
 | Older NWD save version fails | Provide a valid `NavisworksConfigXML`, or set `NavisworksSavedNwdVersion = Latest`. |
 | Wildcard rule matched no files | Use `Preview Grouping`; check `Inclusions`, `Exclusions`, and whether the rule reads from source or output folder. |
 | Duplicate wildcard output names | Each active wildcard `ExportFileName` must be unique. |

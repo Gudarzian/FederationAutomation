@@ -24,6 +24,14 @@ The current PS2EXE-built EXEs are not Authenticode signed and may occasionally b
 - `Docs` contains the concise and full user guides.
 - `Source` contains the PowerShell source and build scripts for maintainers.
 
+### Rebuilding executables
+
+`Source\\ThirdParty\\Navisworks\\2027\\Autodesk.Navisworks.Api.dll` is the
+compile-time reference for the bundled visual-style add-in. This lets a build
+computer create `FA_Main.exe` and `FA_GUI.exe` without Navisworks installed.
+It does not make Navisworks portable: Navisworks Manage is still required on a
+machine that creates federation outputs.
+
 ## Guides
 
 Read `Docs\UserManual.md` for the concise workflow guide and `Docs\Federation-Automation-User-Manual-Friendly.md` for detailed settings and troubleshooting information.

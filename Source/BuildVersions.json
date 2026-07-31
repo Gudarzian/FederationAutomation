@@ -1,0 +1,16 @@
+﻿{
+    "Date":  "20260731",
+    "LastIndex":  2,
+    "Builds":  [
+                   {
+                       "ExeName":  "FA_Main.exe",
+                       "Version":  "20260731-001",
+                       "BuiltAt":  "2026-07-31 15:59:39"
+                   },
+                   {
+                       "ExeName":  "FA_GUI.exe",
+                       "Version":  "20260731-002",
+                       "BuiltAt":  "2026-07-31 15:59:39"
+                   }
+               ]
+}
