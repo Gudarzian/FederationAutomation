@@ -156,7 +156,9 @@ function Get-FEDAUTOApplicationBasePath {
     return (Get-Location).ProviderPath
 }
 $basePath = Get-FEDAUTOApplicationBasePath
-$guiStateDirectory = Join-Path $env:LOCALAPPDATA 'Federation-Automation'
+# Keep UI state with the launched application.  Multiple copies of the GUI can
+# then be used independently without one copy reopening another copy's config.
+$guiStateDirectory = $basePath
 $guiStatePath = Join-Path $guiStateDirectory 'GuiState.json'
 
 function Remove-FEDAUTOStaleTemporaryFiles {

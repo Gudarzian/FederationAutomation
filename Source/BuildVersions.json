@@ -1,6 +1,6 @@
 ﻿{
     "Date":  "20260731",
-    "LastIndex":  2,
+    "LastIndex":  5,
     "Builds":  [
                    {
                        "ExeName":  "FA_Main.exe",
@@ -11,6 +11,21 @@
                        "ExeName":  "FA_GUI.exe",
                        "Version":  "20260731-002",
                        "BuiltAt":  "2026-07-31 15:59:39"
+                   },
+                   {
+                       "ExeName":  "FA_GUI.exe",
+                       "Version":  "20260731-003",
+                       "BuiltAt":  "2026-07-31 16:46:01"
+                   },
+                   {
+                       "ExeName":  "FA_Main.exe",
+                       "Version":  "20260731-004",
+                       "BuiltAt":  "2026-07-31 16:48:28"
+                   },
+                   {
+                       "ExeName":  "FA_GUI.exe",
+                       "Version":  "20260731-005",
+                       "BuiltAt":  "2026-07-31 16:48:28"
                    }
                ]
 }

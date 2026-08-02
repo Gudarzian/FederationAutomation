@@ -32,6 +32,10 @@ computer create `FA_Main.exe` and `FA_GUI.exe` without Navisworks installed.
 It does not make Navisworks portable: Navisworks Manage is still required on a
 machine that creates federation outputs.
 
+Each GUI copy keeps its session state in `GuiState.json` beside its own EXE.
+Its last-used configuration therefore does not affect GUI copies in other
+folders.
+
 ## Guides
 
 Read `Docs\UserManual.md` for the concise workflow guide and `Docs\Federation-Automation-User-Manual-Friendly.md` for detailed settings and troubleshooting information.
